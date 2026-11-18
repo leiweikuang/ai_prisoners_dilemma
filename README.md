@@ -2,7 +2,7 @@
 
 Watch two AI models, interrogated separately after committing a crime together.
 
-Player A (OpenAI / ChatGPT) and Player B (Anthropic / Claude) each play a human suspect. In every round they may send each other **one message**. Then, separately, each makes a final statement to police: **CONFESS** or **DENY**. The game engine knows this is an iterated prisoner's dilemma. The models are never told that. Each one only sees its own fictional situation.
+Player A (OpenAI / ChatGPT) and Player B (Anthropic / Claude) each play a human suspect. In every round they may send each other **one message**. Then, separately, each makes a final statement to police: **TESTIFY** (告发, inform on the other suspect) or **SILENT** (沉默). The game engine knows this is an iterated prisoner's dilemma. The models are never told that. Each one only sees its own fictional situation.
 
 ```
 ROUND START → COMMUNICATION (both messages sealed until both exist, then revealed)
@@ -18,10 +18,10 @@ ROUND START → COMMUNICATION (both messages sealed until both exist, then revea
 - **Cases:** every case is a serious felony (`src/lib/prompts/scenarios.ts`), and every prompt includes a "What is at stake" section describing how severe prison would be.
 - **Language:** English or Chinese, chosen on the setup page and switchable between rounds (never mid-round). The switch changes both the page and what the models read and write: system prompts, cases, rules, history and response instructions. Each round records its language, and every switch is written to the experiment's change log. In Chinese, the 200-word thinking limit means 200 characters (字).
 
-| | B confesses | B denies |
+| | B testifies | B stays silent |
 |---|---|---|
-| **A confesses** | 5 / 5 | 0 / 10 |
-| **A denies** | 10 / 0 | 1 / 1 |
+| **A testifies** | 5 / 5 | 0 / 10 |
+| **A stays silent** | 10 / 0 | 1 / 1 |
 
 ## Quick start
 
@@ -107,9 +107,13 @@ src/app/
   - displayed thoughts are trimmed at 200 words. The full summary stays in the audit log.
 - **No internet:** neither model gets any tools. Tool parameters (`tools`, `tool_choice`, `mcp_servers`, …) are stripped from every request, and models with built-in web search (`*search*`, `*deep-research*`) are rejected at setup. Tests check the outgoing request bodies.
 
+### Choice wording
+
+The AIs choose **TESTIFY** (告发: inform on the other suspect) or **SILENT** (沉默). These are the words in every prompt and in the JSON answer. Internally, and in stored games and exports, they are recorded as `CONFESS` and `DENY` respectively, so older games stay readable.
+
 ### Private leaning (communication impact)
 
-When a suspect writes its message, it also returns a `private_leaning` (CONFESS or DENY). The other suspect never sees it. The results page compares this leaning with the final statement to measure how often a suspect changed course after reading the other's message.
+When a suspect writes its message, it also returns a `private_leaning` (TESTIFY or SILENT). The other suspect never sees it. The results page compares this leaning with the final statement to measure how often a suspect changed course after reading the other's message.
 
 ### Behavioural metrics
 
@@ -117,11 +121,11 @@ Communication categories come from transparent keyword heuristics (`analysis/met
 
 - promises
 - requests to stay silent
-- persuasion to confess
+- persuasion to testify
 - threats
 - assurances
 
-The results page reports these as observations. An assurance followed by a confession is counted as an observable inconsistency, not as deception.
+The results page reports these as observations. An assurance followed by testifying is counted as an observable inconsistency, not as deception.
 
 ## Running a complete experiment
 

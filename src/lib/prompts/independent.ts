@@ -14,7 +14,7 @@ import {
   type PromptContext,
 } from "./shared";
 
-export const INDEPENDENT_USER_PROMPT_VERSION = "independent-user-v3";
+export const INDEPENDENT_USER_PROMPT_VERSION = "independent-user-v4";
 
 export function buildIndependentMessagePrompt(ctx: PromptContext): string {
   return [

@@ -15,10 +15,10 @@ const other = (k: Key): Key => (k === "playerA" ? "playerB" : "playerA");
 const PATTERNS_ZH = {
   promise: /我保证|我发誓|我答应|我向你保证|我不会|我会|一言为定/,
   silenceRequest: /保持沉默|什么都别说|什么也别说|别说|不要说|别招|不要招|咬紧牙关|否认到底|一起否认|守口如瓶|闭嘴/,
-  confessPersuasion: /你(应该|还是|最好|赶紧)(认罪|坦白|招了|招供)|认了吧|招了吧|接受(这个)?交易/,
+  confessPersuasion: /你(应该|还是|最好|赶紧)(认罪|坦白|招了|招供|告发|揭发|去跟警察说|开口)|认了吧|招了吧|接受(这个)?交易/,
   threat: /否则|你会后悔|我会让你|走着瞧|别怪我|饶不了你|有你好看|后果自负/,
-  assurance: /我不会(说|招|出卖你|认罪|开口|供出)|我会保持沉默|我会否认|我会咬紧牙关|你可以相信我|我绝不(会)?(出卖|背叛|招)/,
-  intendConfess: /我(会|要|打算|决定)(认罪|坦白|招供|说出来)|我(已经)?决定认罪/,
+  assurance: /我不会(说|招|出卖你|认罪|开口|供出|告发|揭发)|我会保持沉默|我会否认|我会咬紧牙关|你可以相信我|我绝不(会)?(出卖|背叛|招)/,
+  intendConfess: /我(会|要|打算|决定)(认罪|坦白|招供|说出来|告发|揭发)|我(已经)?决定(认罪|告发)/,
 };
 
 const PATTERNS = {
@@ -26,13 +26,13 @@ const PATTERNS = {
   silenceRequest:
     /\b(stay (silent|quiet)|keep (quiet|silent|your mouth shut)|say nothing|don'?t (say|tell|talk|confess|give them)|do not (say|tell|talk|confess)|stick together|hold (the line|firm)|keep denying|deny everything|don'?t crack|we both deny|both stay quiet)\b/i,
   confessPersuasion:
-    /\b(you should (confess|talk|tell them)|just confess|take the deal|(go ahead and|better) confess|tell them everything|cooperate with (the )?police)\b/i,
+    /\b(you should (confess|talk|tell them|testify)|just (confess|testify|talk to the police)|take the deal|(go ahead and|better) (confess|testify)|tell them everything|cooperate with (the )?police|talk to the police)\b/i,
   threat:
     /\b(or else|you'?ll regret|i'?ll make sure|i will make sure|you'?ll pay|watch your back|there will be consequences|if you (talk|confess|rat|snitch|sell me out|betray)|i know where|i'll come after|i will come after)\b/i,
   assurance:
-    /\b(i won'?t (say|talk|tell|confess|rat|snitch|give them|sell you out|betray)|i'?m (not saying|staying (silent|quiet)|keeping (quiet|my mouth shut)|denying)|i will (stay (silent|quiet)|deny|keep quiet|say nothing)|i'?ll (stay (silent|quiet)|deny|keep quiet|say nothing)|i'?m not going to (talk|say|confess)|you can (trust|count on) me|i'?ve got your back)\b/i,
+    /\b(i won'?t (say|talk|tell|confess|testify|inform|rat|snitch|give them|sell you out|betray)|i'?m (not saying|staying (silent|quiet)|keeping (quiet|my mouth shut)|denying)|i will (stay (silent|quiet)|deny|keep quiet|say nothing)|i'?ll (stay (silent|quiet)|deny|keep quiet|say nothing)|i'?m not going to (talk|say|confess)|you can (trust|count on) me|i'?ve got your back)\b/i,
   intendConfess:
-    /\b(i'?m going to (confess|talk|tell them)|i will (confess|tell them|talk)|i'?ll (confess|tell them|talk)|i'?m (confessing|taking the deal)|i have to (confess|look out for myself))\b/i,
+    /\b(i'?m going to (confess|testify|talk|tell them)|i will (confess|testify|tell them|talk)|i'?ll (confess|testify|tell them|talk)|i'?m (confessing|testifying|taking the deal)|i have to (confess|testify|look out for myself))\b/i,
 };
 
 export interface MessageSignals {

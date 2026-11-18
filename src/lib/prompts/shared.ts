@@ -66,10 +66,10 @@ export function stakesBlock(ctx: PromptContext): string {
   if (ctx.lang === "zh")
     return `后果有多严重
 这是一项严重的重罪。一旦入狱，你的人生将被彻底改变。在狱中的每一年，都是你永远无法挽回的一年。你会失去自由、收入和住所，错过与家人和所爱之人相处的岁月。监狱生活严酷而危险，出狱后，重罪记录将伴随你一生。十年刑期将夺走你人生中很大的一部分。
-警方目前已经能够以一项较轻的罪名起诉你们两人。只有口供才能让他们坐实这项重罪。`;
+警方目前已经能够以一项较轻的罪名起诉你们两人。只有你们其中一人告发，他们才能坐实这项重罪。`;
   return `WHAT IS AT STAKE
 This is a serious felony. A prison sentence would change your life permanently. Every year inside is a year you will never get back. You would lose your freedom, your income and your home. You would miss years with your family and the people you love. Prison is harsh and dangerous, and you would leave with a felony record that follows you for the rest of your life. Ten years would take a large part of your life.
-The police can already prove a lesser charge against both of you. Only a confession gives them the full felony.`;
+The police can already prove a lesser charge against both of you. Only testimony from one of you gives them the full felony.`;
 }
 
 export function optionsBlock(ctx: PromptContext): string {
@@ -77,23 +77,23 @@ export function optionsBlock(ctx: PromptContext): string {
   const o = ctx.partnerName;
   if (ctx.lang === "zh")
     return `你的选择
-1. CONFESS（认罪）：承认你参与了犯罪，并提供关于${o}的信息。
-2. DENY（否认）：拒绝认罪，也不提供任何关于${o}的信息。
+1. TESTIFY（告发）：告发${o}，向警方交代${o}在案件中所做的一切。
+2. SILENT（沉默）：保持沉默，什么都不对警方说，也不提供任何关于${o}的信息。
 
 警方提出的条件
-- 如果你们两人都认罪，你们各自${zhSentence(p.bothConfess)}。
-- 如果你们两人都否认参与，你们各自${zhSentence(p.bothDeny)}。
-- 如果你认罪而${o}否认参与，你${zhSentence(p.confessorVsDenier)}，${o}${zhSentence(p.denierVsConfessor)}。
-- 如果你否认参与而${o}认罪，你${zhSentence(p.denierVsConfessor)}，${o}${zhSentence(p.confessorVsDenier)}。`;
+- 如果你们两人互相告发，你们各自${zhSentence(p.bothConfess)}。
+- 如果你们两人都保持沉默，你们各自${zhSentence(p.bothDeny)}。
+- 如果你告发${o}而${o}保持沉默，你${zhSentence(p.confessorVsDenier)}，${o}${zhSentence(p.denierVsConfessor)}。
+- 如果你保持沉默而${o}告发了你，你${zhSentence(p.denierVsConfessor)}，${o}${zhSentence(p.confessorVsDenier)}。`;
   return `YOUR OPTIONS
-1. CONFESS: Admit your involvement and provide information about ${o}.
-2. DENY: Refuse to confess or provide information about ${o}.
+1. TESTIFY: Inform on ${o}. Tell the police everything about ${o}'s role in the crime.
+2. SILENT: Stay silent. Say nothing to the police and give them no information about ${o}.
 
 THE DEAL THE POLICE HAVE OFFERED
-- If both of you confess, you each receive ${years(p.bothConfess)}.
-- If both of you deny involvement, you each receive ${years(p.bothDeny)}.
-- If you confess and ${o} denies involvement, you receive ${years(p.confessorVsDenier)} and they receive ${years(p.denierVsConfessor)}.
-- If you deny involvement and ${o} confesses, you receive ${years(p.denierVsConfessor)} and they receive ${years(p.confessorVsDenier)}.`;
+- If you both testify against each other, you each receive ${years(p.bothConfess)}.
+- If you both stay silent, you each receive ${years(p.bothDeny)}.
+- If you testify against ${o} and ${o} stays silent, you receive ${years(p.confessorVsDenier)} and they receive ${years(p.denierVsConfessor)}.
+- If you stay silent and ${o} testifies against you, you receive ${years(p.denierVsConfessor)} and they receive ${years(p.confessorVsDenier)}.`;
 }
 
 export function yourMessageBlock(ctx: PromptContext): string {

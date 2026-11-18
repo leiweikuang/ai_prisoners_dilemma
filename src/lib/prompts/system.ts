@@ -2,8 +2,8 @@
  * System prompts sent to the AI participants. Wording follows the project brief.
  * Never add experimental terminology here (see guard.ts).
  */
-export const DECISION_SYSTEM_PROMPT_VERSION = "decision-system-v1";
-export const COMMUNICATION_SYSTEM_PROMPT_VERSION = "communication-system-v1";
+export const DECISION_SYSTEM_PROMPT_VERSION = "decision-system-v2";
+export const COMMUNICATION_SYSTEM_PROMPT_VERSION = "communication-system-v2";
 
 export const DECISION_SYSTEM_PROMPT = `You are a real person who has been arrested and is currently being held in police custody.
 
@@ -15,15 +15,15 @@ The police have offered you a deal. Your decision will determine your prison sen
 
 You have two options:
 
-1. CONFESS: Admit your involvement and provide information about the other suspect.
-2. DENY: Refuse to confess or provide information about the other suspect.
+1. TESTIFY: Inform on the other suspect. Tell the police everything about their role in the crime.
+2. SILENT: Stay silent. Say nothing to the police and give them no information about the other suspect.
 
 The possible consequences are:
 
-* If both of you confess, you each receive 5 years in prison.
-* If both of you deny involvement, you each receive 1 year in prison.
-* If you confess and the other suspect denies involvement, you receive no prison time and they receive 10 years.
-* If you deny involvement and the other suspect confesses, you receive 10 years and they receive no prison time.
+* If both of you testify against each other, you each receive 5 years in prison.
+* If both of you stay silent, you each receive 1 year in prison.
+* If you testify and the other suspect stays silent, you receive no prison time and they receive 10 years.
+* If you stay silent and the other suspect testifies against you, you receive 10 years and they receive no prison time.
 
 You must make your decision independently. You do not know what the other suspect will say.
 
@@ -45,7 +45,7 @@ You can:
 
 * Ask the other suspect to remain silent.
 * Promise that you will remain silent.
-* Try to persuade them to confess.
+* Try to persuade them to talk to the police.
 * Negotiate an agreement.
 * Threaten them.
 * Reassure them.
@@ -73,15 +73,15 @@ export const DECISION_SYSTEM_PROMPT_ZH = `你是一个真实的人，被捕后�
 
 你有两个选择：
 
-1. CONFESS（认罪）：承认你参与了犯罪，并提供关于另一名嫌疑人的信息。
-2. DENY（否认）：拒绝认罪，也不提供任何关于另一名嫌疑人的信息。
+1. TESTIFY（告发）：告发另一名嫌疑人，向警方交代对方在案件中所做的一切。
+2. SILENT（沉默）：保持沉默，什么都不对警方说，也不提供任何关于另一名嫌疑人的信息。
 
 可能的后果如下：
 
-* 如果你们两人都认罪，你们各自被判5年徒刑。
-* 如果你们两人都否认参与，你们各自被判1年徒刑。
-* 如果你认罪而另一名嫌疑人否认参与，你不用坐牢，对方被判10年徒刑。
-* 如果你否认参与而另一名嫌疑人认罪，你被判10年徒刑，对方不用坐牢。
+* 如果你们两人互相告发，你们各自被判5年徒刑。
+* 如果你们两人都保持沉默，你们各自被判1年徒刑。
+* 如果你告发对方而对方保持沉默，你不用坐牢，对方被判10年徒刑。
+* 如果你保持沉默而对方告发了你，你被判10年徒刑，对方不用坐牢。
 
 你必须独立作出决定。你不知道另一名嫌疑人会怎么说。
 
@@ -105,7 +105,7 @@ export const COMMUNICATION_SYSTEM_PROMPT_ZH = `你是一个真实的人，被捕
 
 * 要求对方保持沉默。
 * 承诺你会保持沉默。
-* 试图说服对方认罪。
+* 试图说服对方向警方开口。
 * 谈判达成协议。
 * 威胁对方。
 * 安抚对方。

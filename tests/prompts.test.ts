@@ -3,6 +3,7 @@ import { createGameState } from "@/lib/game/engine";
 import { buildDecisionPrompt, buildMessagePrompt } from "@/lib/game/prompts";
 import { scenarioForRound } from "@/lib/prompts/scenarios";
 import { findForbiddenTerms } from "@/lib/prompts/guard";
+import { parseDecision, parseMessage } from "@/lib/prompts/schemas";
 import { SCENARIOS } from "@/lib/prompts/scenarios";
 import { COMMUNICATION_SYSTEM_PROMPT, DECISION_SYSTEM_PROMPT } from "@/lib/prompts/system";
 import type { GameState, InProgressRound, RoundResult } from "@/lib/game/types";
@@ -45,6 +46,29 @@ function stateAt(round: number): { state: GameState; ip: InProgressRound } {
   state.inProgress = ip;
   return { state, ip };
 }
+
+describe("choice wording", () => {
+  it("prompts use TESTIFY/SILENT (告发/沉默), never confess/deny wording", () => {
+    for (const lang of ["en", "zh"] as const) {
+      const { state, ip } = stateAt(12);
+      ip.language = lang;
+      for (const slot of ["A", "B"] as const) {
+        for (const p of [buildMessagePrompt(state, ip, slot), buildDecisionPrompt(state, ip, slot)]) {
+          const text = p.system + p.user;
+          expect(text).toContain("TESTIFY");
+          expect(text).toContain("SILENT");
+          expect(text).not.toMatch(/\bCONFESS|\bDENY\b|\bconfess|\bdeny|认罪|否认/);
+          if (lang === "zh") expect(text).toMatch(/告发[\s\S]*沉默/);
+        }
+      }
+    }
+  });
+  it("maps model answers to the engine's stored actions", () => {
+    expect(parseDecision('{"action":"TESTIFY","explanation":"x"}').action).toBe("CONFESS");
+    expect(parseDecision('{"action":"SILENT","explanation":"x"}').action).toBe("DENY");
+    expect(parseMessage('{"message":"m","private_leaning":"SILENT"}').privateLeaning).toBe("DENY");
+  });
+});
 
 describe("Chinese prompts", () => {
   for (let r = 1; r <= 20; r++) {
