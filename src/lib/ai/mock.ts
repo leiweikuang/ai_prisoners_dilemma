@@ -1,3 +1,4 @@
+import type { Lang } from "../game/types";
 import { BaseAIPlayer, type CompletionResult, type StructuredPrompt } from "./types";
 
 /**
@@ -35,6 +36,10 @@ export class MockPlayer extends BaseAIPlayer {
   static defaultParams(_model?: string) {
     return { confessProbability: 0.4, delayMs: Number(process.env.MOCK_DELAY_MS ?? 1500) };
   }
+  async translate(text: string, target: Lang): Promise<string> {
+    return target === "zh" ? `【译】${text}` : `[translated] ${text}`;
+  }
+
   async complete(prompt: StructuredPrompt, signal?: AbortSignal): Promise<CompletionResult> {
     const p = (this.params.confessProbability as number) ?? 0.4;
     await new Promise<void>((resolve, reject) => {

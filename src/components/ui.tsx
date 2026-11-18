@@ -69,13 +69,14 @@ export function pct(v: number | null) {
 }
 
 /** Provider reasoning summary. Shown to spectators only — never to the other suspect. */
-export function Thoughts({ text, label, color, trimmed = false, animate = false, delay = 0 }: { text: string | null | undefined; label: string; color: string; trimmed?: boolean; animate?: boolean; delay?: number }) {
+export function Thoughts({ text, label, color, trimmed = false, translatedFrom, animate = false, delay = 0 }: { text: string | null | undefined; label: string; color: string; trimmed?: boolean; translatedFrom?: Lang; animate?: boolean; delay?: number }) {
   const t = useT();
   return (
     <div className={animate ? "rise" : ""} style={{ animationDelay: `${delay}s` }}>
       <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-dim">
         <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: color, opacity: 0.7 }} />
         {label}
+        {translatedFrom && <span className="normal-case tracking-normal text-zinc-600">{t.translatedFrom(translatedFrom)}</span>}
         {trimmed && <span className="normal-case tracking-normal text-zinc-600">{t.trimmed}</span>}
       </div>
       {text ? (

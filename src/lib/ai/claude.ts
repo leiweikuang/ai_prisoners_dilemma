@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { BaseAIPlayer, ProviderError, withoutTools, type CompletionResult, type StructuredPrompt } from "./types";
+import type { Lang } from "../game/types";
+import { BaseAIPlayer, ProviderError, TRANSLATION_INSTRUCTIONS, withoutTools, type CompletionResult, type StructuredPrompt } from "./types";
 
 export class ClaudePlayer extends BaseAIPlayer {
   provider = "anthropic";
@@ -26,6 +27,26 @@ export class ClaudePlayer extends BaseAIPlayer {
       // Low effort keeps thinking short enough for the time and word limits.
       output_config: { effort: process.env.ANTHROPIC_EFFORT || "low" },
     };
+  }
+
+  async translate(text: string, target: Lang, signal?: AbortSignal): Promise<string> {
+    const res = await this.client.messages.create(
+      {
+        model: this.model,
+        max_tokens: 4000,
+        system: TRANSLATION_INSTRUCTIONS[target],
+        messages: [{ role: "user", content: text }],
+        output_config: { effort: "low" },
+      } as Anthropic.MessageCreateParamsNonStreaming,
+      { signal },
+    );
+    const out = res.content
+      .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("")
+      .trim();
+    if (!out) throw new ProviderError("Empty translation", false);
+    return out;
   }
 
   async complete(prompt: StructuredPrompt, signal?: AbortSignal): Promise<CompletionResult> {

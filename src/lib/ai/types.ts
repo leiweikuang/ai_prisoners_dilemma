@@ -1,4 +1,4 @@
-import type { Action } from "../game/types";
+import type { Action, Lang } from "../game/types";
 import { parseDecision, parseMessage } from "../prompts/schemas";
 
 export interface StructuredPrompt {
@@ -32,7 +32,17 @@ export interface AIPlayer {
   complete(prompt: StructuredPrompt, signal?: AbortSignal): Promise<CompletionResult>;
   makeDecision(prompt: StructuredPrompt): Promise<{ action: Action; explanation: string }>;
   composeMessage(prompt: StructuredPrompt): Promise<{ message: string; privateLeaning: Action | null }>;
+  /**
+   * Spectator-only translation of a reasoning summary (e.g. OpenAI summaries
+   * are always English). Never part of the interrogation.
+   */
+  translate(text: string, target: Lang, signal?: AbortSignal): Promise<string>;
 }
+
+export const TRANSLATION_INSTRUCTIONS: Record<Lang, string> = {
+  zh: "Translate the user's text into natural Simplified Chinese. Keep names as they are. Output only the translation, nothing else.",
+  en: "Translate the user's text into natural English. Keep names as they are. Output only the translation, nothing else.",
+};
 
 export abstract class BaseAIPlayer implements AIPlayer {
   abstract name: string;
@@ -40,6 +50,7 @@ export abstract class BaseAIPlayer implements AIPlayer {
   abstract model: string;
   abstract params: Record<string, unknown>;
   abstract complete(prompt: StructuredPrompt, signal?: AbortSignal): Promise<CompletionResult>;
+  abstract translate(text: string, target: Lang, signal?: AbortSignal): Promise<string>;
 
   async makeDecision(prompt: StructuredPrompt) {
     return parseDecision((await this.complete(prompt)).rawText);

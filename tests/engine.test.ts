@@ -193,3 +193,42 @@ describe("language", () => {
     expect(r2.every((c) => c.userPrompt.includes("时间限制") && c.userPrompt.includes("后果有多严重"))).toBe(true);
   });
 });
+
+describe("thought translation (display only)", () => {
+  it("translates English thoughts in a Chinese round, keeps the original in the log, never in prompts", async () => {
+    const g = await createGame({ playerA: { provider: "mock", model: "m" }, playerB: { provider: "mock", model: "m" }, language: "zh" });
+    const orig = MockPlayer.prototype.complete;
+    vi.spyOn(MockPlayer.prototype, "complete").mockImplementation(async function (this: MockPlayer, p, sig) {
+      return { ...(await orig.call(this, p, sig)), reasoning: "Weighing the deal carefully." };
+    });
+    await advance(g.gameId, { roundNumber: 1, stage: "COMMUNICATION" });
+    const s = await advance(g.gameId, { roundNumber: 1, stage: "DECISION" });
+    const r = s.rounds[0];
+    expect(r.communication!.playerA.thoughts).toBe("【译】Weighing the deal carefully.");
+    expect(r.communication!.playerA.thoughtsTranslatedFrom).toBe("en");
+    expect(r.decisions.playerB.thoughtsTranslatedFrom).toBe("en");
+    const tr = s.callLog.filter((c) => c.purpose === "translation");
+    expect(tr).toHaveLength(4);
+    expect(tr.every((c) => c.ok && c.userPrompt === "Weighing the deal carefully.")).toBe(true);
+    // interrogation prompts never include thoughts
+    expect(s.callLog.filter((c) => !c.purpose).every((c) => !c.userPrompt.includes("Weighing the deal"))).toBe(true);
+  });
+
+  it("shows the original if translation fails, without failing the round", async () => {
+    const g = await createGame({ playerA: { provider: "mock", model: "m" }, playerB: { provider: "mock", model: "m" }, language: "zh" });
+    const orig = MockPlayer.prototype.complete;
+    vi.spyOn(MockPlayer.prototype, "complete").mockImplementation(async function (this: MockPlayer, p, sig) {
+      return { ...(await orig.call(this, p, sig)), reasoning: "English thought." };
+    });
+    vi.spyOn(MockPlayer.prototype, "translate").mockRejectedValue(new Error("boom"));
+    const s = await advance(g.gameId, { roundNumber: 1, stage: "COMMUNICATION" });
+    expect(s.inProgress!.communication!.playerA.thoughts).toBe("English thought.");
+    expect(s.inProgress!.communication!.playerA.thoughtsTranslatedFrom).toBeUndefined();
+  });
+
+  it("does not translate thoughts already in the round's language", async () => {
+    const g = await createGame({ playerA: { provider: "mock", model: "m" }, playerB: { provider: "mock", model: "m" }, language: "zh" });
+    const s = await advance(g.gameId, { roundNumber: 1, stage: "COMMUNICATION" });
+    expect(s.callLog.some((c) => c.purpose === "translation")).toBe(false);
+  });
+});

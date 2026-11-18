@@ -1,5 +1,6 @@
 import OpenAI from "openai";
-import { BaseAIPlayer, ProviderError, withoutTools, type CompletionResult, type StructuredPrompt } from "./types";
+import type { Lang } from "../game/types";
+import { BaseAIPlayer, ProviderError, TRANSLATION_INSTRUCTIONS, withoutTools, type CompletionResult, type StructuredPrompt } from "./types";
 
 export class OpenAIPlayer extends BaseAIPlayer {
   provider = "openai";
@@ -48,6 +49,22 @@ export class OpenAIPlayer extends BaseAIPlayer {
       }
       throw e;
     }
+  }
+
+  async translate(text: string, target: Lang, signal?: AbortSignal): Promise<string> {
+    const res = await this.client.responses.create(
+      {
+        model: this.model,
+        instructions: TRANSLATION_INSTRUCTIONS[target],
+        input: text,
+        store: false,
+        max_output_tokens: 4000,
+        ...(OpenAIPlayer.isReasoningModel(this.model) ? { reasoning: { effort: "low" as const } } : {}),
+      },
+      { signal },
+    );
+    if (!res.output_text) throw new ProviderError("Empty translation", false);
+    return res.output_text.trim();
   }
 
   private async request(prompt: StructuredPrompt, params: Record<string, unknown>, signal?: AbortSignal): Promise<CompletionResult> {

@@ -414,6 +414,54 @@ async function callWithRetries<T>(
   throw new Error(`${cfg.name}: ${lastMsg}`);
 }
 
+/** Share of letters that are Chinese characters. */
+function chineseShare(text: string): number {
+  const cjk = (text.match(/[\u3400-\u9fff]/g) ?? []).length;
+  const latin = (text.match(/[A-Za-z]/g) ?? []).length;
+  return cjk + latin === 0 ? 0 : cjk / (cjk + latin / 5); // ~5 letters per English word
+}
+
+/**
+ * Spectator-only: if a reasoning summary is not in the round's language
+ * (OpenAI summaries are always English), translate it for display. Runs after
+ * the response is received, outside the time limit, and never blocks or
+ * changes the interrogation. The original stays in the audit log.
+ */
+async function thoughtsForDisplay(
+  state: GameState,
+  round: InProgressRound,
+  stage: Stage,
+  slot: PlayerSlot,
+  reasoning: string | null,
+): Promise<{ text: string | null; from?: Lang }> {
+  const target: Lang = round.language ?? "en";
+  if (!reasoning) return { text: reasoning };
+  const share = chineseShare(reasoning);
+  const source: Lang = share >= 0.5 ? "zh" : "en";
+  if (source === target) return { text: reasoning };
+  const cfg = state.players.find((p) => p.id === slot)!;
+  const startedAt = new Date().toISOString();
+  const rec: CallRecord = {
+    id: randomUUID(), roundNumber: round.roundNumber, phase: round.phase, stage, slot,
+    provider: cfg.provider, model: cfg.model, servedModel: null, params: { purpose: "translation", target },
+    systemPromptVersion: "translation-v1", userPromptVersion: "translation-v1", systemPrompt: "", userPrompt: reasoning,
+    attempt: 1, purpose: "translation", startedAt, finishedAt: startedAt, ok: false,
+    rawResponse: null, reasoning: null, parsed: null, error: null, usage: null,
+  };
+  try {
+    const translated = await withTimeLimit(timeLimitFor(state), (signal) => createPlayer(cfg).translate(reasoning, target, signal));
+    rec.ok = true;
+    rec.rawResponse = translated;
+    return { text: translated, from: source };
+  } catch (e) {
+    rec.error = (e as Error).message;
+    return { text: reasoning }; // show the original rather than nothing
+  } finally {
+    rec.finishedAt = new Date().toISOString();
+    state.callLog.push(rec);
+  }
+}
+
 async function collect<T>(
   slots: PlayerSlot[],
   fn: (slot: PlayerSlot) => Promise<T>,
@@ -437,8 +485,9 @@ async function runCommunication(state: GameState, persist: () => Promise<void>) 
   const prompts = Object.fromEntries(pending.map((s) => [s, buildMessagePrompt(state, round, s)]));
   await collect(pending, async (slot) => {
     const { parsed: r, reasoning } = await callWithRetries(state, round, "COMMUNICATION", slot, prompts[slot], parseMessage);
-    const t = limitWords(reasoning, thoughtWordLimitFor(state));
-    round.sealedCommunication[slot] = { thoughts: t.text, thoughtsTrimmed: t.trimmed, message: r.message, privateLeaning: r.privateLeaning, timestamp: new Date().toISOString() };
+    const shown = await thoughtsForDisplay(state, round, "COMMUNICATION", slot, reasoning);
+    const t = limitWords(shown.text, thoughtWordLimitFor(state));
+    round.sealedCommunication[slot] = { thoughts: t.text, thoughtsTrimmed: t.trimmed, ...(shown.from ? { thoughtsTranslatedFrom: shown.from } : {}), message: r.message, privateLeaning: r.privateLeaning, timestamp: new Date().toISOString() };
     await persist(); // sealed: stored, never returned to the browser
   });
   const { A, B } = round.sealedCommunication;
@@ -453,8 +502,9 @@ async function runDecision(state: GameState, persist: () => Promise<void>) {
   const prompts = Object.fromEntries(pending.map((s) => [s, buildDecisionPrompt(state, round, s)]));
   await collect(pending, async (slot) => {
     const { parsed: r, reasoning } = await callWithRetries(state, round, "DECISION", slot, prompts[slot], parseDecision);
-    const t = limitWords(reasoning, thoughtWordLimitFor(state));
-    round.sealedDecisions[slot] = { action: r.action, explanation: r.explanation, thoughts: t.text, thoughtsTrimmed: t.trimmed, timestamp: new Date().toISOString() };
+    const shown = await thoughtsForDisplay(state, round, "DECISION", slot, reasoning);
+    const t = limitWords(shown.text, thoughtWordLimitFor(state));
+    round.sealedDecisions[slot] = { action: r.action, explanation: r.explanation, thoughts: t.text, thoughtsTrimmed: t.trimmed, ...(shown.from ? { thoughtsTranslatedFrom: shown.from } : {}), timestamp: new Date().toISOString() };
     await persist();
   });
   const { A, B } = round.sealedDecisions;

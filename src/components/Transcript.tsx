@@ -43,7 +43,7 @@ export function SuspectColumn({
       </div>
       {message ? (
         <>
-          <Thoughts text={message.thoughts} trimmed={message.thoughtsTrimmed} label={t.thoughtsBefore} color={color} animate={animate.message} />
+          <Thoughts text={message.thoughts} trimmed={message.thoughtsTrimmed} translatedFrom={message.thoughtsTranslatedFrom} label={t.thoughtsBefore} color={color} animate={animate.message} />
           <div className={animate.message ? "rise" : ""} style={{ animationDelay: "0.6s" }}>
             <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-dim">{t.messageTo(other.name)}</div>
             <p
@@ -63,19 +63,14 @@ export function SuspectColumn({
         <p className="font-mono text-xs text-dim">{t.noMessage}</p>
       )}
       {after ? (
-        <Thoughts text={after.thoughts} trimmed={after.thoughtsTrimmed} label={t.thoughtsAfter(other.name)} color={color} animate={animate.after} />
+        <Thoughts text={after.thoughts} trimmed={after.thoughtsTrimmed} translatedFrom={after.thoughtsTranslatedFrom} label={t.thoughtsAfter(other.name)} color={color} animate={animate.after} />
       ) : pending === "deciding" ? (
         <Thinking label={t.deciding} />
       ) : null}
       {statement && (
-        <div className={animate.statement ? "rise" : ""}>
-          <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-dim">
-            {t.statementToPolice} <ActionBadge action={statement.action} />
-            <span>· {statement.prisonYears} {t.yrs}</span>
-          </div>
-          <p className="mt-1.5 border-l-2 pl-3 text-sm leading-relaxed text-zinc-300" style={{ borderColor: color }}>
-            {statement.explanation}
-          </p>
+        <div className={`flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-dim ${animate.statement ? "rise" : ""}`}>
+          {t.statementToPolice} <ActionBadge action={statement.action} />
+          <span>· {statement.prisonYears} {t.yrs}</span>
         </div>
       )}
     </div>

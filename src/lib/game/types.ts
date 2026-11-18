@@ -66,6 +66,8 @@ export interface CommunicationEntry {
   thoughts?: string | null;
   /** True when the provider's summary exceeded the word limit and was trimmed for display. */
   thoughtsTrimmed?: boolean;
+  /** Language the summary was translated from for display (original kept in the audit log). */
+  thoughtsTranslatedFrom?: Lang;
   /** Private, never shown to the other suspect. Used to measure communication impact. */
   privateLeaning: Action | null;
   timestamp: string;
@@ -77,6 +79,7 @@ export interface DecisionEntry {
   /** Provider reasoning summary after reading the other suspect's message. Spectators only. */
   thoughts?: string | null;
   thoughtsTrimmed?: boolean;
+  thoughtsTranslatedFrom?: Lang;
   prisonYears: number;
   timestamp: string;
 }
@@ -130,6 +133,8 @@ export interface CallRecord {
   systemPrompt: string;
   userPrompt: string;
   attempt: number;
+  /** "translation" = spectator-only translation of a reasoning summary; absent = interrogation call. */
+  purpose?: "translation";
   startedAt: string;
   finishedAt: string;
   ok: boolean;
