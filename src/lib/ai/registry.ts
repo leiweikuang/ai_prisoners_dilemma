@@ -1,4 +1,5 @@
 import type { PlayerConfig } from "../game/types";
+import { profileFor } from "../profiles";
 import { ClaudePlayer } from "./claude";
 import { MockPlayer } from "./mock";
 import { OpenAIPlayer } from "./openai";
@@ -8,7 +9,7 @@ import type { AIPlayer } from "./types";
 export const PROVIDERS = {
   openai: {
     label: "OpenAI",
-    displayName: "ChatGPT",
+    displayName: profileFor("openai").displayName,
     defaultModel: () => process.env.OPENAI_MODEL || "gpt-5",
     defaultParams: (model: string) => OpenAIPlayer.defaultParams(model),
     create: (c: PlayerConfig) => new OpenAIPlayer(c.name, c.model, c.params),
@@ -16,7 +17,7 @@ export const PROVIDERS = {
   },
   anthropic: {
     label: "Anthropic",
-    displayName: "Claude",
+    displayName: profileFor("anthropic").displayName,
     defaultModel: () => process.env.ANTHROPIC_MODEL || "claude-opus-5-5",
     defaultParams: (model: string) => ClaudePlayer.defaultParams(model),
     create: (c: PlayerConfig) => new ClaudePlayer(c.name, c.model, c.params),

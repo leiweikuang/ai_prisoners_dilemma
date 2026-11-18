@@ -10,6 +10,7 @@ import { randomUUID } from "crypto";
 import { createPlayer, isProviderId, PROVIDERS } from "../ai/registry";
 import { backoffMs, classifyError, MAX_ATTEMPTS } from "../ai/retry";
 import { PROMPT_VERSIONS } from "../prompts";
+import { personaNames } from "../profiles";
 import { parseDecision, parseMessage } from "../prompts/schemas";
 import { scenarioForRound } from "../prompts/scenarios";
 import { getStore, VersionConflictError } from "../store";
@@ -40,7 +41,6 @@ export function limitWords(text: string | null, max: number): { text: string | n
 /** Each suspect gets at most this long per response; the request is aborted after it. */
 export const RESPONSE_TIME_LIMIT_SECONDS = Math.max(5, Number(process.env.RESPONSE_TIME_LIMIT_SECONDS || 60));
 const SLOTS: PlayerSlot[] = ["A", "B"];
-const PERSONAS: Record<PlayerSlot, string> = { A: "Alex Mercer", B: "Jordan Hayes" };
 
 export class EngineError extends Error {
   constructor(
@@ -100,8 +100,9 @@ export function createGameState(input: CreateGameInput): GameState {
     if (!/^[\w.:\-/@]+$/.test(model)) throw new EngineError("Invalid model identifier", 400, "bad_config");
     // Models with built-in web access are not allowed: suspects must not search the internet.
     if (/search|deep-research|browse/i.test(model)) throw new EngineError("Models with built-in web search are not allowed", 400, "bad_config");
-    return { slot, name: prov.displayName, provider: cfg.provider, model, params: prov.defaultParams(model), persona: { name: PERSONAS[slot] } };
+    return { slot, name: prov.displayName, provider: cfg.provider, model, params: prov.defaultParams(model), persona: { name: personas[slot] } };
   };
+  const personas = personaNames(input.playerA.provider, input.playerB.provider);
   const a = mk("A", input.playerA);
   const b = mk("B", input.playerB);
   if (a.name === b.name) {

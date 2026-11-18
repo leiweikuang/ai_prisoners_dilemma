@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CommunicationEntry, PlayerState, PublicGameState, RoundResult, Stage } from "@/lib/game/types";
 import { HistoryTable } from "@/components/HistoryTable";
-import { ActionBadge, providerColor, Thinking, Years } from "@/components/ui";
+import { ActionBadge, Avatar, providerColor, Thinking, Years } from "@/components/ui";
 import { EarlierRounds, SuspectColumn } from "@/components/Transcript";
 
 type View = "idle" | "comm_pending" | "comm_reveal" | "deliberation" | "locked" | "reaction" | "countdown" | "reveal";
@@ -252,10 +252,13 @@ export function LiveView({ id }: { id: string }) {
       <div className={`relative flex flex-col border bg-panel/80 p-5 transition ${active ? "border-lamp/40" : "border-edge"}`}>
         <div className="absolute inset-x-0 top-0 h-0.5" style={{ background: color }} />
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-dim">Suspect {slot} · “{p.persona.name}”</div>
-            <div className="mt-1 font-display text-3xl uppercase tracking-wide md:text-4xl" style={{ color }}>{p.name}</div>
-            <div className="font-mono text-xs text-dim">{p.model}</div>
+          <div className="flex min-w-0 items-center gap-4">
+            <Avatar provider={p.provider} name={p.name} size={72} />
+            <div className="min-w-0">
+              <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-dim">Suspect {slot} · known as “{p.persona.name}”</div>
+              <div className="mt-1 font-display text-3xl uppercase tracking-wide md:text-4xl" style={{ color }}>{p.name}</div>
+              <div className="truncate font-mono text-xs text-dim">{p.model}</div>
+            </div>
           </div>
           <div className="text-right">
             <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-dim">Total sentence</div>
@@ -395,8 +398,11 @@ export function LiveView({ id }: { id: string }) {
         <h2 className="font-mono text-[10px] uppercase tracking-[0.3em] text-dim">Scoreboard · cumulative prison years (lower is better)</h2>
         <div className="mt-3 space-y-2">
           {[pa, pb].map((p) => (
-            <div key={p.id} className="grid grid-cols-[110px_1fr_70px] items-center gap-3 font-mono text-xs">
-              <span style={{ color: providerColor(p.provider) }}>{p.name}</span>
+            <div key={p.id} className="grid grid-cols-[130px_1fr_70px] items-center gap-3 font-mono text-xs">
+              <span className="flex items-center gap-2" style={{ color: providerColor(p.provider) }}>
+                <Avatar provider={p.provider} name={p.name} size={22} />
+                {p.name}
+              </span>
               <div className="h-2 bg-edge">
                 <div className="h-2 transition-all duration-1000" style={{ width: `${(p.cumulativePrisonYears / maxYears) * 100}%`, background: providerColor(p.provider) }} />
               </div>

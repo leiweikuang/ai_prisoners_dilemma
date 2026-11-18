@@ -1,9 +1,22 @@
 import type { Action } from "@/lib/game/types";
+import { profileFor } from "@/lib/profiles";
 
 export function providerColor(provider: string) {
-  if (provider === "openai") return "var(--color-gpt)";
-  if (provider === "anthropic") return "var(--color-claude)";
-  return "#a78bfa";
+  return profileFor(provider).color;
+}
+
+/** Circular profile picture for a model; initials when no picture exists. */
+export function Avatar({ provider, name, size = 40, className = "" }: { provider: string; name: string; size?: number; className?: string }) {
+  const p = profileFor(provider);
+  const style = { width: size, height: size, boxShadow: `0 0 0 2px ${p.color}, 0 0 ${size / 3}px ${p.color}55` };
+  if (!p.avatar)
+    return (
+      <span className={`inline-flex shrink-0 items-center justify-center rounded-full bg-ink font-display text-zinc-300 ${className}`} style={{ ...style, fontSize: size / 2.6 }}>
+        {name.slice(0, 1).toUpperCase()}
+      </span>
+    );
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={p.avatar} alt={name} width={size} height={size} className={`shrink-0 rounded-full bg-ink object-cover ${className}`} style={style} />;
 }
 
 export function ActionBadge({ action, big = false, animate = false }: { action: Action; big?: boolean; animate?: boolean }) {

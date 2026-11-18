@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { providerColor } from "@/components/ui";
+import { Avatar, providerColor } from "@/components/ui";
+import { profileFor } from "@/lib/profiles";
 
 interface ProviderInfo {
   id: string;
@@ -95,8 +96,12 @@ export default function SetupPage() {
       <div className="relative border border-edge bg-panel/80 p-6" style={{ boxShadow: `inset 0 1px 0 ${color}33` }}>
         <div className="absolute left-0 top-0 h-full w-0.5" style={{ background: color }} />
         <div className="font-mono text-[11px] uppercase tracking-[0.3em] text-dim">Suspect {slot}</div>
-        <div className="mt-1 font-display text-3xl uppercase tracking-wide" style={{ color }}>
-          {p?.displayName ?? "…"}
+        <div className="mt-2 flex items-center gap-4 font-display text-3xl uppercase tracking-wide" style={{ color }}>
+          <Avatar provider={provider} name={p?.displayName ?? "?"} size={64} />
+          <span>
+            {p?.displayName ?? "…"}
+            <span className="block font-mono text-[11px] normal-case tracking-normal text-dim">in custody as “{provider === "mock" ? (slot === "A" ? "Morgan" : "Riley") : profileFor(provider).personaName}”</span>
+          </span>
         </div>
         <label className="mt-5 block font-mono text-[11px] uppercase tracking-[0.2em] text-dim">Provider</label>
         <select

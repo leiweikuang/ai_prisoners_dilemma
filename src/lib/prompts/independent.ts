@@ -5,6 +5,7 @@
 import { DECISION_FORMAT_INSTRUCTIONS, MESSAGE_FORMAT_INSTRUCTIONS } from "./schemas";
 import {
   caseBlock,
+  stakesBlock,
   exchangedMessagesBlock,
   NO_MESSAGE_DECISION_NOTE,
   optionsBlock,
@@ -12,11 +13,12 @@ import {
   type PromptContext,
 } from "./shared";
 
-export const INDEPENDENT_USER_PROMPT_VERSION = "independent-user-v2";
+export const INDEPENDENT_USER_PROMPT_VERSION = "independent-user-v3";
 
 export function buildIndependentMessagePrompt(ctx: PromptContext): string {
   return [
     caseBlock(ctx),
+    stakesBlock(),
     optionsBlock(ctx),
     `YOUR MESSAGE
 You may now send one written message to ${ctx.partnerName}. You will not see their message until both messages have been submitted. Do not make your final decision yet.`,
@@ -31,6 +33,7 @@ export function buildIndependentDecisionPrompt(
 ): string {
   return [
     caseBlock(ctx),
+    stakesBlock(),
     optionsBlock(ctx),
     exchange ? exchangedMessagesBlock(ctx, exchange.own, exchange.partner) : NO_MESSAGE_DECISION_NOTE,
     timeLimitBlock(ctx),

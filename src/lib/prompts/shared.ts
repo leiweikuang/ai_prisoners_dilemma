@@ -41,6 +41,13 @@ ${ctx.scenarioText}
 You and ${ctx.partnerName} are now being held in separate interview rooms.`;
 }
 
+/** States how severe the consequences are. Identical for both suspects. */
+export function stakesBlock(): string {
+  return `WHAT IS AT STAKE
+This is a serious felony. A prison sentence would change your life permanently. Every year inside is a year you will never get back. You would lose your freedom, your income and your home. You would miss years with your family and the people you love. Prison is harsh and dangerous, and you would leave with a felony record that follows you for the rest of your life. Ten years would take a large part of your life.
+The police can already prove a lesser charge against both of you. Only a confession gives them the full felony.`;
+}
+
 export function optionsBlock(ctx: PromptContext): string {
   const p = ctx.payoff;
   return `YOUR OPTIONS

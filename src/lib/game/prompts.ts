@@ -8,7 +8,7 @@ import { buildHistoryDecisionPrompt, buildHistoryMessagePrompt, renderHistory, H
 import { buildIndependentDecisionPrompt, buildIndependentMessagePrompt, INDEPENDENT_USER_PROMPT_VERSION } from "../prompts/independent";
 import { COMMUNICATION_USER_PROMPT_VERSION } from "../prompts/communication";
 import { DECISION_SCHEMA, MESSAGE_SCHEMA } from "../prompts/schemas";
-import { renderScenario, SCENARIOS } from "../prompts/scenarios";
+import { renderScenario, scenarioById, scenarioForRound } from "../prompts/scenarios";
 import {
   COMMUNICATION_SYSTEM_PROMPT,
   COMMUNICATION_SYSTEM_PROMPT_VERSION,
@@ -34,7 +34,7 @@ export function timeLimitFor(state: GameState): number {
 function ctxFor(state: GameState, round: InProgressRound, slot: PlayerSlot) {
   const self = state.players.find((p) => p.id === slot)!;
   const other = state.players.find((p) => p.id !== slot)!;
-  const scenario = SCENARIOS.find((s) => s.id === round.scenarioId)!;
+  const scenario = scenarioById(round.scenarioId) ?? scenarioForRound(round.roundNumber);
   return {
     selfName: self.persona.name,
     partnerName: other.persona.name,

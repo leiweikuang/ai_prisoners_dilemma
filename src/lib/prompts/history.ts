@@ -6,6 +6,7 @@ import type { PlayerSlot, RoundResult } from "../game/types";
 import { DECISION_FORMAT_INSTRUCTIONS, MESSAGE_FORMAT_INSTRUCTIONS } from "./schemas";
 import {
   caseBlock,
+  stakesBlock,
   exchangedMessagesBlock,
   NO_MESSAGE_DECISION_NOTE,
   optionsBlock,
@@ -13,7 +14,7 @@ import {
   type PromptContext,
 } from "./shared";
 
-export const HISTORY_USER_PROMPT_VERSION = "history-user-v2";
+export const HISTORY_USER_PROMPT_VERSION = "history-user-v3";
 
 function yearsShort(n: number) {
   return n === 1 ? "1 year" : `${n} years`;
@@ -64,6 +65,7 @@ export function buildHistoryMessagePrompt(ctx: PromptContext, history: string): 
   return [
     history,
     caseBlock(ctx),
+    stakesBlock(),
     optionsBlock(ctx),
     `YOUR MESSAGE
 You may now send one written message to ${ctx.partnerName}. You will not see their message until both messages have been submitted. Do not make your final decision yet.`,
@@ -80,6 +82,7 @@ export function buildHistoryDecisionPrompt(
   return [
     history,
     caseBlock(ctx),
+    stakesBlock(),
     optionsBlock(ctx),
     exchange ? exchangedMessagesBlock(ctx, exchange.own, exchange.partner) : NO_MESSAGE_DECISION_NOTE,
     timeLimitBlock(ctx),

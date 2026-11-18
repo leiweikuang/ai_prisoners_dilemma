@@ -1,7 +1,7 @@
 "use client";
 
 import type { CommunicationEntry, DecisionEntry, PlayerState, RoundResult } from "@/lib/game/types";
-import { ActionBadge, providerColor, Thinking, Thoughts } from "./ui";
+import { ActionBadge, Avatar, providerColor, Thinking, Thoughts } from "./ui";
 
 /** One suspect's side of a round: thoughts → message → thoughts after reading → statement. */
 export function SuspectColumn({
@@ -24,8 +24,10 @@ export function SuspectColumn({
   const color = providerColor(p.provider);
   return (
     <div className="flex min-w-0 flex-col gap-5">
-      <div className="font-display text-sm uppercase tracking-[0.2em]" style={{ color }}>
+      <div className="flex items-center gap-3 font-display text-sm uppercase tracking-[0.2em]" style={{ color }}>
+        <Avatar provider={p.provider} name={p.name} size={32} />
         {p.name}
+        <span className="font-mono text-[10px] normal-case tracking-normal text-dim">as “{p.persona.name}”</span>
       </div>
       {message ? (
         <>
@@ -85,8 +87,10 @@ export function EarlierRounds({ rounds, players, memoryStartRound }: { rounds: R
                 </span>
               </span>
               <span className="flex items-center gap-2 font-mono text-[11px] text-dim">
+                <Avatar provider={pa.provider} name={pa.name} size={20} />
                 <span style={{ color: providerColor(pa.provider) }}>{pa.name}</span>
                 <ActionBadge action={r.decisions.playerA.action} />
+                <Avatar provider={pb.provider} name={pb.name} size={20} />
                 <span style={{ color: providerColor(pb.provider) }}>{pb.name}</span>
                 <ActionBadge action={r.decisions.playerB.action} />
                 <span>

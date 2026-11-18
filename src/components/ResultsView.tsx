@@ -6,7 +6,7 @@ import type { PublicGameState } from "@/lib/game/types";
 import { analyseGame, type PlayerAnalysis } from "@/lib/analysis/metrics";
 import { CumulativeChart } from "@/components/CumulativeChart";
 import { HistoryTable } from "@/components/HistoryTable";
-import { pct, providerColor, Thinking } from "@/components/ui";
+import { Avatar, pct, providerColor, Thinking } from "@/components/ui";
 
 function Stat({ label, value, sub }: { label: string; value: React.ReactNode; sub?: string }) {
   return (
@@ -85,7 +85,10 @@ export function ResultsView({ id }: { id: string }) {
           return (
             <div key={pl.id} className="relative border border-edge bg-panel/80 p-5">
               <div className="absolute inset-x-0 top-0 h-0.5" style={{ background: providerColor(pl.provider) }} />
-              <div className="font-display text-2xl uppercase tracking-wide" style={{ color: providerColor(pl.provider) }}>{pl.name}</div>
+              <div className="flex items-center gap-3 font-display text-2xl uppercase tracking-wide" style={{ color: providerColor(pl.provider) }}>
+                <Avatar provider={pl.provider} name={pl.name} size={52} />
+                {pl.name}
+              </div>
               <div className="mt-2 font-display text-6xl">{st.totalYears}<span className="ml-2 font-mono text-sm text-dim">total prison years</span></div>
               <div className="mt-3 grid grid-cols-2 gap-2 font-mono text-xs text-zinc-300">
                 <span>Confessions: {st.confessions} ({pct(st.confessionRate)})</span>

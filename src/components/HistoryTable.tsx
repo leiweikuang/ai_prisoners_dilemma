@@ -2,13 +2,14 @@
 
 import { Fragment, useState } from "react";
 import type { PlayerState, RoundResult } from "@/lib/game/types";
-import { ActionBadge, providerColor, Thoughts } from "./ui";
+import { ActionBadge, Avatar, providerColor, Thoughts } from "./ui";
 
 export function RoundDetail({ round, players }: { round: RoundResult; players: PlayerState[] }) {
   const [a, b] = players;
   const col = (p: PlayerState, k: "playerA" | "playerB") => (
     <div className="space-y-3">
-      <div className="font-display uppercase tracking-wider" style={{ color: providerColor(p.provider) }}>
+      <div className="flex items-center gap-2 font-display uppercase tracking-wider" style={{ color: providerColor(p.provider) }}>
+        <Avatar provider={p.provider} name={p.name} size={26} />
         {p.name}
       </div>
       {round.communication && <Thoughts text={round.communication[k].thoughts} trimmed={round.communication[k].thoughtsTrimmed} label="Thoughts before writing" color={providerColor(p.provider)} />}

@@ -51,6 +51,8 @@ describe("prompt integrity", () => {
     expect(findForbiddenTerms(DECISION_SYSTEM_PROMPT)).toEqual([]);
     expect(findForbiddenTerms(COMMUNICATION_SYSTEM_PROMPT)).toEqual([]);
     for (const s of SCENARIOS) expect(findForbiddenTerms(s.title + " " + s.description), s.id).toEqual([]);
+    // Every case is a serious felony.
+    for (const s of SCENARIOS) expect(s.description, s.id).toMatch(/felony|felonies/);
   });
 
   for (let r = 1; r <= 20; r++) {
