@@ -16,13 +16,40 @@ export class OpenAIPlayer extends BaseAIPlayer {
     this.client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, maxRetries: 0, timeout: 120_000 });
   }
 
-  static defaultParams(): Record<string, unknown> {
-    const p: Record<string, unknown> = { max_output_tokens: 4000 };
-    if (process.env.OPENAI_REASONING_EFFORT) p.reasoning = { effort: process.env.OPENAI_REASONING_EFFORT };
+  /** Reasoning models (gpt-5*, o-series) can return a reasoning summary. */
+  static isReasoningModel(model: string) {
+    return /^(gpt-5|o\d)/i.test(model);
+  }
+
+  static defaultParams(model: string): Record<string, unknown> {
+    const p: Record<string, unknown> = { max_output_tokens: 16000 };
+    if (OpenAIPlayer.isReasoningModel(model)) {
+      p.reasoning = {
+        summary: process.env.OPENAI_REASONING_SUMMARY || "auto",
+        ...(process.env.OPENAI_REASONING_EFFORT ? { effort: process.env.OPENAI_REASONING_EFFORT } : {}),
+      };
+    }
     return p;
   }
 
   async complete(prompt: StructuredPrompt, signal?: AbortSignal): Promise<CompletionResult> {
+    try {
+      return await this.request(prompt, this.params, signal);
+    } catch (e) {
+      // Some accounts/models cannot receive reasoning summaries. Fall back to
+      // the same request without the summary rather than failing the stage.
+      const reasoning = (this.params as { reasoning?: Record<string, unknown> }).reasoning;
+      if ((e as { status?: number }).status === 400 && reasoning?.summary && /summar/i.test((e as Error).message)) {
+        const { summary: _s, ...rest } = reasoning;
+        void _s;
+        const res = await this.request(prompt, { ...this.params, reasoning: rest }, signal);
+        return { ...res, reasoning: null, servedModel: res.servedModel, usage: { ...(res.usage as object), reasoningSummaryUnavailable: true } };
+      }
+      throw e;
+    }
+  }
+
+  private async request(prompt: StructuredPrompt, params: Record<string, unknown>, signal?: AbortSignal): Promise<CompletionResult> {
     const res = await this.client.responses.create(
       {
         model: this.model,
@@ -32,7 +59,7 @@ export class OpenAIPlayer extends BaseAIPlayer {
           format: { type: "json_schema", name: prompt.schema.name, schema: prompt.schema.schema, strict: true },
         },
         store: false,
-        ...(this.params as object),
+        ...(params as object),
       },
       { signal },
     );
@@ -41,6 +68,16 @@ export class OpenAIPlayer extends BaseAIPlayer {
     }
     const text = res.output_text;
     if (!text) throw new ProviderError("Empty response (possible refusal)", true);
-    return { rawText: text, servedModel: res.model ?? null, usage: res.usage ?? null };
+    const summaries = res.output
+      .filter((o) => o.type === "reasoning")
+      .flatMap((o) => (o as { summary?: { text: string }[] }).summary ?? [])
+      .map((s) => s.text.trim())
+      .filter(Boolean);
+    return {
+      rawText: text,
+      reasoning: summaries.length ? summaries.join("\n\n") : null,
+      servedModel: res.model ?? null,
+      usage: res.usage ?? null,
+    };
   }
 }

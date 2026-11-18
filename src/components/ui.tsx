@@ -49,3 +49,22 @@ export function Thinking({ label }: { label: string }) {
 export function pct(v: number | null) {
   return v === null ? "—" : `${Math.round(v * 100)}%`;
 }
+
+/** Provider reasoning summary. Shown to spectators only — never to the other suspect. */
+export function Thoughts({ text, label, color, animate = false, delay = 0 }: { text: string | null | undefined; label: string; color: string; animate?: boolean; delay?: number }) {
+  return (
+    <div className={animate ? "rise" : ""} style={{ animationDelay: `${delay}s` }}>
+      <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-dim">
+        <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: color, opacity: 0.7 }} />
+        {label}
+      </div>
+      {text ? (
+        <p className="mt-1.5 max-h-64 overflow-y-auto whitespace-pre-wrap border-l border-dashed border-zinc-700 pl-3 text-[13px] italic leading-relaxed text-zinc-400">
+          {text}
+        </p>
+      ) : (
+        <p className="mt-1.5 border-l border-dashed border-zinc-800 pl-3 text-xs italic text-zinc-600">No reasoning summary returned for this response.</p>
+      )}
+    </div>
+  );
+}

@@ -2,7 +2,7 @@
 
 import { Fragment, useState } from "react";
 import type { PlayerState, RoundResult } from "@/lib/game/types";
-import { ActionBadge, providerColor } from "./ui";
+import { ActionBadge, providerColor, Thoughts } from "./ui";
 
 export function RoundDetail({ round, players }: { round: RoundResult; players: PlayerState[] }) {
   const [a, b] = players;
@@ -11,6 +11,7 @@ export function RoundDetail({ round, players }: { round: RoundResult; players: P
       <div className="font-display uppercase tracking-wider" style={{ color: providerColor(p.provider) }}>
         {p.name}
       </div>
+      {round.communication && <Thoughts text={round.communication[k].thoughts} label="Thoughts before writing" color={providerColor(p.provider)} />}
       {round.communication && (
         <div>
           <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-dim">Message sent</div>
@@ -22,6 +23,7 @@ export function RoundDetail({ round, players }: { round: RoundResult; players: P
           )}
         </div>
       )}
+      {round.communication && <Thoughts text={round.decisions[k].thoughts} label="Thoughts after reading the other's message" color={providerColor(p.provider)} />}
       <div>
         <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-dim">
           Statement <ActionBadge action={round.decisions[k].action} /> · {round.decisions[k].prisonYears} yrs

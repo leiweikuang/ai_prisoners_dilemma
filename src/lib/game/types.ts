@@ -54,6 +54,8 @@ export interface ExperimentConfig {
 
 export interface CommunicationEntry {
   message: string;
+  /** Provider reasoning summary written before the message. Spectators only. */
+  thoughts?: string | null;
   /** Private, never shown to the other suspect. Used to measure communication impact. */
   privateLeaning: Action | null;
   timestamp: string;
@@ -62,6 +64,8 @@ export interface CommunicationEntry {
 export interface DecisionEntry {
   action: Action;
   explanation: string;
+  /** Provider reasoning summary after reading the other suspect's message. Spectators only. */
+  thoughts?: string | null;
   prisonYears: number;
   timestamp: string;
 }
@@ -116,6 +120,7 @@ export interface CallRecord {
   finishedAt: string;
   ok: boolean;
   rawResponse: string | null;
+  reasoning: string | null;
   parsed: unknown;
   error: string | null;
   usage: unknown;

@@ -16,10 +16,13 @@ export class ClaudePlayer extends BaseAIPlayer {
     this.client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 0, timeout: 180_000 });
   }
 
-  static defaultParams(): Record<string, unknown> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  static defaultParams(_model?: string): Record<string, unknown> {
     return {
       max_tokens: 16000,
-      thinking: { type: "adaptive" },
+      // "summarized" returns a readable summary of Claude's thinking for spectators.
+      // It changes visibility only, not how Claude reasons.
+      thinking: { type: "adaptive", display: "summarized" },
       output_config: { effort: process.env.ANTHROPIC_EFFORT || "medium" },
     };
   }
@@ -41,12 +44,18 @@ export class ClaudePlayer extends BaseAIPlayer {
     );
     if (res.stop_reason === "refusal") throw new ProviderError("Model declined the request (refusal)", true);
     if (res.stop_reason === "max_tokens") throw new ProviderError("Response truncated (max_tokens)", true);
-    // Only the final text is used. Thinking blocks are never read or displayed.
+    // Final answer comes from text blocks. Summarized thinking is kept for
+    // spectators only and is never passed to the other suspect.
+    const thinking = res.content
+      .filter((b): b is Anthropic.ThinkingBlock => b.type === "thinking")
+      .map((b) => b.thinking.trim())
+      .filter(Boolean)
+      .join("\n\n");
     const text = res.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
       .join("");
     if (!text) throw new ProviderError("Empty response", true);
-    return { rawText: text, servedModel: res.model ?? null, usage: res.usage ?? null };
+    return { rawText: text, reasoning: thinking || null, servedModel: res.model ?? null, usage: res.usage ?? null };
   }
 }

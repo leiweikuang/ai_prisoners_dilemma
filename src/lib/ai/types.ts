@@ -9,6 +9,12 @@ export interface StructuredPrompt {
 
 export interface CompletionResult {
   rawText: string;
+  /**
+   * Provider-generated summary of the model's internal reasoning (OpenAI
+   * reasoning summary / Claude summarized thinking). Spectator-only: never
+   * shown to the other suspect or fed back into any prompt.
+   */
+  reasoning: string | null;
   servedModel: string | null;
   usage: unknown;
 }

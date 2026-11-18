@@ -40,6 +40,7 @@ To try the app without API keys, set `ENABLE_MOCK_PLAYERS=true` and choose "Mock
 | `OPENAI_MODEL` | no | Default OpenAI model (default `gpt-5`). You can override it per experiment. |
 | `ANTHROPIC_MODEL` | no | Default Claude model (default `claude-opus-5-5`). You can override it per experiment. |
 | `OPENAI_REASONING_EFFORT` | no | Passes `reasoning.effort` to OpenAI reasoning models |
+| `OPENAI_REASONING_SUMMARY` | no | `auto` (default), `concise` or `detailed` — reasoning summary shown as thoughts |
 | `ANTHROPIC_EFFORT` | no | Claude `output_config.effort` (default `medium`) |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | on Vercel | Postgres persistence. Run `supabase/schema.sql` first. |
 | `DATA_DIR` | no | Directory for the local JSON store (default `.data/games`) |
@@ -89,7 +90,7 @@ src/app/
 - **Export full audit log** on the results page downloads this log. The export includes revealed stages only.
 - Configuration is locked when an experiment is created. If the prompt versions change mid-run, for example because of a redeploy, the change is recorded in `configChanges`.
 - No decision is ever invented. Invalid JSON or an invalid action triggers a retry. If every attempt fails, the stage stays open and is marked failed.
-- Only the models' generated explanations are shown. Claude's thinking blocks are not read, and no chain-of-thought is displayed.
+- **Thoughts:** spectators see each model's *reasoning summary*. For OpenAI this is the reasoning summary (`reasoning.summary`), available on reasoning models only. For Claude it is summarized thinking (`thinking.display: "summarized"`). These are provider-written summaries, not the raw chain of thought, which neither provider exposes. They appear at two points: before the suspect writes its message, and after it reads the other suspect's message. They are sealed like everything else, never shown to the other suspect, and never included in any prompt. Requesting a summary changes visibility only, not how the model reasons.
 
 ### Private leaning (communication impact)
 

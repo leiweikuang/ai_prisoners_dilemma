@@ -22,7 +22,8 @@ export class MockPlayer extends BaseAIPlayer {
   ) {
     super();
   }
-  static defaultParams() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  static defaultParams(_model?: string) {
     return { confessProbability: 0.4, delayMs: Number(process.env.MOCK_DELAY_MS ?? 1500) };
   }
   async complete(prompt: StructuredPrompt): Promise<CompletionResult> {
@@ -41,6 +42,10 @@ export class MockPlayer extends BaseAIPlayer {
             : "I'm not saying anything. I'm trusting that we both keep our mouths shut.",
       };
     }
-    return { rawText: JSON.stringify(body), servedModel: this.model, usage: null };
+    const reasoning =
+      prompt.schema.name === "suspect_message"
+        ? `Weighing the deal. If we both stay quiet it's a year each, but I can't see what they'll do. Leaning ${action === "DENY" ? "towards silence" : "towards talking"} — the message should keep them quiet either way.`
+        : `Read their message. ${action === "DENY" ? "They sound committed. I'll hold the line." : "Promises are cheap in here. Ten years is too much risk."}`;
+    return { rawText: JSON.stringify(body), reasoning, servedModel: this.model, usage: null };
   }
 }

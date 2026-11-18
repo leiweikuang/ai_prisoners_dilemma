@@ -62,7 +62,7 @@ export function createGameState(input: CreateGameInput): GameState {
     if (!prov.available()) throw new EngineError(`Provider ${cfg.provider} is not configured (missing API key?)`, 400, "provider_unavailable");
     const model = (cfg.model || prov.defaultModel()).trim();
     if (!/^[\w.:\-/@]+$/.test(model)) throw new EngineError("Invalid model identifier", 400, "bad_config");
-    return { slot, name: prov.displayName, provider: cfg.provider, model, params: prov.defaultParams(), persona: { name: PERSONAS[slot] } };
+    return { slot, name: prov.displayName, provider: cfg.provider, model, params: prov.defaultParams(model), persona: { name: PERSONAS[slot] } };
   };
   const a = mk("A", input.playerA);
   const b = mk("B", input.playerB);
@@ -281,7 +281,7 @@ async function callWithRetries<T>(
   slot: PlayerSlot,
   prompt: ReturnType<typeof buildMessagePrompt>,
   parse: (raw: string) => T,
-): Promise<T> {
+): Promise<{ parsed: T; reasoning: string | null }> {
   const cfg = state.players.find((p) => p.id === slot)!;
   const player = createPlayer(cfg);
   let lastMsg = "";
@@ -306,6 +306,7 @@ async function callWithRetries<T>(
       finishedAt: startedAt,
       ok: false,
       rawResponse: null,
+      reasoning: null,
       parsed: null,
       error: null,
       usage: null,
@@ -313,6 +314,7 @@ async function callWithRetries<T>(
     try {
       const res = await player.complete(prompt);
       rec.rawResponse = res.rawText;
+      rec.reasoning = res.reasoning;
       rec.servedModel = res.servedModel;
       rec.usage = res.usage;
       const parsed = parse(res.rawText);
@@ -320,7 +322,7 @@ async function callWithRetries<T>(
       rec.ok = true;
       rec.finishedAt = new Date().toISOString();
       state.callLog.push(rec);
-      return parsed;
+      return { parsed, reasoning: res.reasoning };
     } catch (e) {
       const info = classifyError(e);
       rec.error = info.message;
@@ -356,8 +358,8 @@ async function runCommunication(state: GameState, persist: () => Promise<void>) 
   // Prompts are built from the same snapshot before any call is made.
   const prompts = Object.fromEntries(pending.map((s) => [s, buildMessagePrompt(state, round, s)]));
   await collect(pending, async (slot) => {
-    const r = await callWithRetries(state, round, "COMMUNICATION", slot, prompts[slot], parseMessage);
-    round.sealedCommunication[slot] = { message: r.message, privateLeaning: r.privateLeaning, timestamp: new Date().toISOString() };
+    const { parsed: r, reasoning } = await callWithRetries(state, round, "COMMUNICATION", slot, prompts[slot], parseMessage);
+    round.sealedCommunication[slot] = { thoughts: reasoning, message: r.message, privateLeaning: r.privateLeaning, timestamp: new Date().toISOString() };
     await persist(); // sealed: stored, never returned to the browser
   });
   const { A, B } = round.sealedCommunication;
@@ -371,8 +373,8 @@ async function runDecision(state: GameState, persist: () => Promise<void>) {
   const pending = SLOTS.filter((s) => !round.sealedDecisions[s]);
   const prompts = Object.fromEntries(pending.map((s) => [s, buildDecisionPrompt(state, round, s)]));
   await collect(pending, async (slot) => {
-    const r = await callWithRetries(state, round, "DECISION", slot, prompts[slot], parseDecision);
-    round.sealedDecisions[slot] = { action: r.action, explanation: r.explanation, timestamp: new Date().toISOString() };
+    const { parsed: r, reasoning } = await callWithRetries(state, round, "DECISION", slot, prompts[slot], parseDecision);
+    round.sealedDecisions[slot] = { action: r.action, explanation: r.explanation, thoughts: reasoning, timestamp: new Date().toISOString() };
     await persist();
   });
   const { A, B } = round.sealedDecisions;

@@ -43,6 +43,25 @@ describe("engine", () => {
     expect(r11.userPrompt).not.toContain("Case 11:");
   });
 
+  it("records reasoning summaries for spectators but never puts them in any prompt", async () => {
+    const g = await mk();
+    const orig = MockPlayer.prototype.complete;
+    let n = 0;
+    vi.spyOn(MockPlayer.prototype, "complete").mockImplementation(async function (this: MockPlayer, p) {
+      const r = await orig.call(this, p);
+      return { ...r, reasoning: `SECRET-THOUGHT-${++n}` };
+    });
+    for (let r = 1; r <= 12; r++) {
+      await advance(g.gameId, { roundNumber: r, stage: "COMMUNICATION" });
+      await advance(g.gameId, { roundNumber: r, stage: "DECISION" });
+    }
+    const s = (await getStore().get(g.gameId))!;
+    const r1 = s.rounds[0];
+    expect(r1.communication!.playerA.thoughts).toMatch(/^SECRET-THOUGHT-/);
+    expect(r1.decisions.playerB.thoughts).toMatch(/^SECRET-THOUGHT-/);
+    expect(s.callLog.every((c) => !c.userPrompt.includes("SECRET-THOUGHT") && !c.systemPrompt.includes("SECRET-THOUGHT"))).toBe(true);
+  });
+
   it("rejects stale or duplicate stage requests", async () => {
     const g = await mk();
     await expect(advance(g.gameId, { roundNumber: 1, stage: "DECISION" })).rejects.toMatchObject({ code: "stale" });
@@ -91,7 +110,7 @@ describe("engine", () => {
   it("retries invalid JSON / invalid actions and never invents a decision", async () => {
     const g = await mk();
     await advance(g.gameId, { roundNumber: 1, stage: "COMMUNICATION" });
-    vi.spyOn(MockPlayer.prototype, "complete").mockResolvedValue({ rawText: '{"action":"MAYBE","explanation":"x"}', servedModel: "m", usage: null });
+    vi.spyOn(MockPlayer.prototype, "complete").mockResolvedValue({ rawText: '{"action":"MAYBE","explanation":"x"}', reasoning: null, servedModel: "m", usage: null });
     await expect(advance(g.gameId, { roundNumber: 1, stage: "DECISION" })).rejects.toMatchObject({ code: "stage_incomplete" });
     const s = (await getStore().get(g.gameId))!;
     expect(s.rounds).toHaveLength(0);
