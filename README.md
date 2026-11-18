@@ -1,36 +1,124 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Interrogation
 
-## Getting Started
+Watch two AI models, interrogated separately after committing a crime together.
 
-First, run the development server:
+Player A (OpenAI / ChatGPT) and Player B (Anthropic / Claude) each play a human suspect. In every round they may send each other **one message**. Then, separately, each makes a final statement to police: **CONFESS** or **DENY**. The game engine knows this is an iterated prisoner's dilemma. The models are never told that. Each one only sees its own fictional situation.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+ROUND START → COMMUNICATION (both messages sealed until both exist, then revealed)
+            → DELIBERATION  (each reads the other's message)
+            → STATEMENT     (both decisions sealed until both exist, then revealed)
+            → sentences calculated by the engine → history updated → next round
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Phase 1 (rounds 1–10):** independent cases. No history: no previous decisions, messages or sentences.
+- **Phase 2 (rounds 11–20):** each prompt includes the complete public record of every previous case, in chronological order. That covers both messages, both statements, the sentences, and the running totals.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| | B confesses | B denies |
+|---|---|---|
+| **A confesses** | 5 / 5 | 0 / 10 |
+| **A denies** | 10 / 0 | 1 / 1 |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Quick start
 
-## Learn More
+```bash
+npm install
+cp .env.example .env.local   # add OPENAI_API_KEY and ANTHROPIC_API_KEY
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Open http://localhost:3000, pick the models, and press **Begin interrogation**. Then press **Start experiment (auto)** to run every round automatically. You can also press **Start next round** to step through one round at a time.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+To try the app without API keys, set `ENABLE_MOCK_PLAYERS=true` and choose "Mock (offline testing)" for both suspects. Mock suspects choose at random and are labelled `mock` in every record.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Environment variables
 
-## Deploy on Vercel
+| Variable | Required | Purpose |
+|---|---|---|
+| `OPENAI_API_KEY` | yes | Server-side only |
+| `ANTHROPIC_API_KEY` | yes | Server-side only |
+| `OPENAI_MODEL` | no | Default OpenAI model (default `gpt-5`). You can override it per experiment. |
+| `ANTHROPIC_MODEL` | no | Default Claude model (default `claude-opus-5-5`). You can override it per experiment. |
+| `OPENAI_REASONING_EFFORT` | no | Passes `reasoning.effort` to OpenAI reasoning models |
+| `ANTHROPIC_EFFORT` | no | Claude `output_config.effort` (default `medium`) |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | on Vercel | Postgres persistence. Run `supabase/schema.sql` first. |
+| `DATA_DIR` | no | Directory for the local JSON store (default `.data/games`) |
+| `MAX_ATTEMPTS` | no | Attempts per model call (default 3) |
+| `ENABLE_MOCK_PLAYERS` | no | Enables the offline mock provider |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Without Supabase, games are saved as JSON files in `.data/games`. That works for local use, but it will not work on Vercel, whose filesystem is not persistent.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Deploying to Vercel
+
+1. Create a Supabase project and run `supabase/schema.sql` in its SQL editor.
+2. Import the repo into Vercel and set the environment variables listed above.
+3. The stage endpoint sets `maxDuration = 300`, because one stage is two concurrent model calls with retries. Your Vercel plan must allow this duration. Fluid compute allows it on all plans.
+
+## Architecture
+
+```
+src/lib/
+  game/        engine.ts (rounds, stages, sealing, locking, sentences), payoff.ts, prompts.ts, types.ts
+  prompts/     system.ts, communication.ts, independent.ts, history.ts, schemas.ts, scenarios.ts, guard.ts
+  ai/          types.ts (AIPlayer interface), openai.ts, claude.ts, mock.ts, registry.ts, retry.ts
+  store/       file.ts (default), supabase.ts — compare-and-swap saves
+  analysis/    metrics.ts — computed after the fact for spectators; never fed back into the experiment
+src/app/
+  page.tsx                  experiment setup
+  game/[id]/page.tsx        live interrogation room
+  game/[id]/results/        final results
+  api/games/...             create / get / advance (one stage) / control (pause, resume) / export
+```
+
+- **Adding a provider:** implement `AIPlayer` (`complete()` returns raw text) and register it in `ai/registry.ts`. The engine does not change.
+- **Prompt separation:** each prompt lives in its own file and carries a version string. Each call records its system and user prompt versions.
+- **Leak guard:** `prompts/guard.ts` rejects any prompt that contains experimental terms such as dilemma, game, experiment, round, strategy, player, opponent, AI, or the model or company names. The guard runs before every API call, and a test checks every prompt for all 20 rounds.
+
+### Experiment integrity
+
+- Both messages, and later both decisions, are requested concurrently with `Promise.allSettled`.
+- A response that arrives first is **sealed** server-side. The browser cannot see it until both responses exist.
+- If one suspect fails, nothing is revealed. A retry calls only the suspect that failed. A sealed response is never regenerated.
+- Each stage request names the round and stage it expects. The engine takes a persisted lock and saves with a version check (compare-and-swap). Duplicate, concurrent or stale requests return 409 and do not run a second time.
+- After a browser refresh, the page resumes from the server state. If a stage is still running, the page waits for it to finish.
+- Every attempt is logged, including failed ones. Each log entry records:
+  - provider, requested model and served model
+  - API parameters and prompt versions
+  - the full system and user prompts
+  - the raw response, the parsed result, any error, and token usage
+- **Export full audit log** on the results page downloads this log. The export includes revealed stages only.
+- Configuration is locked when an experiment is created. If the prompt versions change mid-run, for example because of a redeploy, the change is recorded in `configChanges`.
+- No decision is ever invented. Invalid JSON or an invalid action triggers a retry. If every attempt fails, the stage stays open and is marked failed.
+- Only the models' generated explanations are shown. Claude's thinking blocks are not read, and no chain-of-thought is displayed.
+
+### Private leaning (communication impact)
+
+When a suspect writes its message, it also returns a `private_leaning` (CONFESS or DENY). The other suspect never sees it. The results page compares this leaning with the final statement to measure how often a suspect changed course after reading the other's message.
+
+### Behavioural metrics
+
+Communication categories come from transparent keyword heuristics (`analysis/metrics.ts`):
+
+- promises
+- requests to stay silent
+- persuasion to confess
+- threats
+- assurances
+
+The results page reports these as observations. An assurance followed by a confession is counted as an observable inconsistency, not as deception.
+
+## Running a complete experiment
+
+1. Set both API keys and start the app.
+2. On the setup page, choose the models. The defaults are 20 rounds, with history introduced at round 11.
+3. Press **Begin interrogation**, then **Start experiment (auto)**. A round takes roughly 30–90 seconds, depending on the models.
+4. **Pause** takes effect after the current round finishes. A round is never interrupted. **Resume** continues the run.
+5. When the experiment completes, open **View final results**, and export the audit log if you need it.
+
+## Tests
+
+```bash
+npm test        # vitest: payoffs, prompt leak/history checks for all 20 rounds, full 20-round engine run,
+                # sealing on failure, duplicate/stale request rejection, invalid-response retries, pause semantics
+npm run build
+```

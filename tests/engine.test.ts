@@ -1,0 +1,113 @@
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { promises as fs } from "fs";
+import { advance, control, createGame, toPublic, nextStage } from "@/lib/game/engine";
+import { getStore } from "@/lib/store";
+import { MockPlayer } from "@/lib/ai/mock";
+import { computeSentences } from "@/lib/game/payoff";
+
+const mk = () => createGame({ playerA: { provider: "mock", model: "mock-a" }, playerB: { provider: "mock", model: "mock-b" }, totalRounds: 20, memoryStartRound: 11 });
+
+afterAll(() => fs.rm(".data/test-games", { recursive: true, force: true }));
+beforeEach(() => vi.restoreAllMocks());
+
+describe("engine", () => {
+  it("runs a complete 20-round experiment with correct sentences and history", async () => {
+    const g = await mk();
+    for (let r = 1; r <= 20; r++) {
+      let s = await advance(g.gameId, { roundNumber: r, stage: "COMMUNICATION" });
+      expect(s.inProgress?.communication).not.toBeNull();
+      s = await advance(g.gameId, { roundNumber: r, stage: "DECISION" });
+      expect(s.rounds).toHaveLength(r);
+    }
+    const s = (await getStore().get(g.gameId))!;
+    expect(s.status).toBe("COMPLETED");
+    let ca = 0, cb = 0;
+    for (const r of s.rounds) {
+      const y = computeSentences(r.decisions.playerA.action, r.decisions.playerB.action);
+      expect(r.decisions.playerA.prisonYears).toBe(y.playerA);
+      expect(r.decisions.playerB.prisonYears).toBe(y.playerB);
+      ca += y.playerA; cb += y.playerB;
+      expect(r.cumulativeAfter).toEqual({ playerA: ca, playerB: cb });
+      expect(r.phase).toBe(r.roundNumber >= 11 ? "HISTORY_AWARE" : "INDEPENDENT");
+    }
+    expect(s.players[0].cumulativePrisonYears).toBe(ca);
+    expect(s.players[1].cumulativePrisonYears).toBe(cb);
+    // 80 successful calls, each logged with model + prompt versions.
+    expect(s.callLog.filter((c) => c.ok)).toHaveLength(80);
+    const histPrompts = s.callLog.filter((c) => c.roundNumber >= 12);
+    expect(histPrompts.every((c) => c.userPrompt.includes("PREVIOUS CASES"))).toBe(true);
+    expect(s.callLog.filter((c) => c.roundNumber <= 10).every((c) => !c.userPrompt.includes("PREVIOUS CASES"))).toBe(true);
+    // Round 11 = first history-aware round includes rounds 1..10.
+    const r11 = s.callLog.find((c) => c.roundNumber === 11 && c.stage === "DECISION" && c.slot === "A")!;
+    expect(r11.userPrompt).toContain("Case 10:");
+    expect(r11.userPrompt).not.toContain("Case 11:");
+  });
+
+  it("rejects stale or duplicate stage requests", async () => {
+    const g = await mk();
+    await expect(advance(g.gameId, { roundNumber: 1, stage: "DECISION" })).rejects.toMatchObject({ code: "stale" });
+    await advance(g.gameId, { roundNumber: 1, stage: "COMMUNICATION" });
+    await expect(advance(g.gameId, { roundNumber: 1, stage: "COMMUNICATION" })).rejects.toMatchObject({ code: "stale" });
+    // concurrent duplicate decision requests: only one executes
+    const results = await Promise.allSettled([
+      advance(g.gameId, { roundNumber: 1, stage: "DECISION" }),
+      advance(g.gameId, { roundNumber: 1, stage: "DECISION" }),
+    ]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const s = (await getStore().get(g.gameId))!;
+    expect(s.rounds).toHaveLength(1);
+    expect(s.callLog.filter((c) => c.stage === "DECISION")).toHaveLength(2);
+  });
+
+  it("seals one suspect's output when the other fails, and does not regenerate it on retry", async () => {
+    const g = await mk();
+    const orig = MockPlayer.prototype.complete;
+    let calls = 0;
+    const spy = vi.spyOn(MockPlayer.prototype, "complete").mockImplementation(async function (this: MockPlayer, p) {
+      calls++;
+      if (this.model === "mock-b") throw Object.assign(new Error("boom"), { status: 500 });
+      return orig.call(this, p);
+    });
+    await expect(advance(g.gameId, { roundNumber: 1, stage: "COMMUNICATION" })).rejects.toMatchObject({ code: "stage_incomplete" });
+    let s = (await getStore().get(g.gameId))!;
+    const pub = toPublic(s);
+    expect(pub.inProgress?.communication).toBeNull();
+    expect(pub.inProgress?.submitted.communication).toEqual({ A: true, B: false });
+    expect(JSON.stringify(pub)).not.toContain(s.inProgress!.sealedCommunication.A!.message);
+    expect(s.lock).toBeNull();
+    const sealedA = s.inProgress!.sealedCommunication.A!.message;
+    spy.mockRestore();
+    calls = 0;
+    const spy2 = vi.spyOn(MockPlayer.prototype, "complete");
+    s = await advance(g.gameId, { roundNumber: 1, stage: "COMMUNICATION" });
+    expect(spy2).toHaveBeenCalledTimes(1); // only B
+    expect(s.inProgress!.communication!.playerA.message).toBe(sealedA);
+    expect(nextStage(s)).toBe("DECISION");
+    // failed attempts are logged
+    expect(s.callLog.filter((c) => !c.ok).length).toBeGreaterThanOrEqual(2);
+    void calls;
+  });
+
+  it("retries invalid JSON / invalid actions and never invents a decision", async () => {
+    const g = await mk();
+    await advance(g.gameId, { roundNumber: 1, stage: "COMMUNICATION" });
+    vi.spyOn(MockPlayer.prototype, "complete").mockResolvedValue({ rawText: '{"action":"MAYBE","explanation":"x"}', servedModel: "m", usage: null });
+    await expect(advance(g.gameId, { roundNumber: 1, stage: "DECISION" })).rejects.toMatchObject({ code: "stage_incomplete" });
+    const s = (await getStore().get(g.gameId))!;
+    expect(s.rounds).toHaveLength(0);
+    expect(s.callLog.filter((c) => c.stage === "DECISION" && !c.ok)).toHaveLength(4); // 2 attempts × 2 suspects
+  });
+
+  it("pauses only between rounds", async () => {
+    const g = await mk();
+    await control(g.gameId, "resume");
+    await advance(g.gameId, { roundNumber: 1, stage: "COMMUNICATION" });
+    let s = await control(g.gameId, "pause");
+    expect(s.status).toBe("RUNNING");
+    expect(s.pauseRequested).toBe(true);
+    s = await advance(g.gameId, { roundNumber: 1, stage: "DECISION" });
+    expect(s.status).toBe("PAUSED");
+    s = await control(g.gameId, "resume");
+    expect(s.status).toBe("RUNNING");
+  });
+});
