@@ -187,7 +187,7 @@ const en = {
 export type Dict = typeof en;
 
 const zh: Dict = {
-  title: "AI 审讯",
+  title: "AI囚徒困境",
   confess: "告发",
   deny: "沉默",
   yearUnit: () => "年",
