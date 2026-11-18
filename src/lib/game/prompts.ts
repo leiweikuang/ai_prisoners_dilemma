@@ -23,6 +23,14 @@ export interface BuiltPrompt extends StructuredPrompt {
   userVersion: string;
 }
 
+export function thoughtWordLimitFor(state: GameState): number {
+  return state.config.thoughtWordLimit ?? 200;
+}
+
+export function timeLimitFor(state: GameState): number {
+  return state.config.responseTimeLimitSeconds ?? 60; // games created before the limit existed
+}
+
 function ctxFor(state: GameState, round: InProgressRound, slot: PlayerSlot) {
   const self = state.players.find((p) => p.id === slot)!;
   const other = state.players.find((p) => p.id !== slot)!;
@@ -32,6 +40,8 @@ function ctxFor(state: GameState, round: InProgressRound, slot: PlayerSlot) {
     partnerName: other.persona.name,
     scenarioText: renderScenario(scenario, self.persona.name, other.persona.name),
     payoff: state.config.payoff,
+    timeLimitSeconds: timeLimitFor(state),
+    thoughtWordLimit: thoughtWordLimitFor(state),
   };
 }
 

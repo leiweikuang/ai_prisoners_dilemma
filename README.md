@@ -39,9 +39,11 @@ To try the app without API keys, set `ENABLE_MOCK_PLAYERS=true` and choose "Mock
 | `ANTHROPIC_API_KEY` | yes | Server-side only |
 | `OPENAI_MODEL` | no | Default OpenAI model (default `gpt-5`). You can override it per experiment. |
 | `ANTHROPIC_MODEL` | no | Default Claude model (default `claude-opus-5-5`). You can override it per experiment. |
-| `OPENAI_REASONING_EFFORT` | no | Passes `reasoning.effort` to OpenAI reasoning models |
+| `OPENAI_REASONING_EFFORT` | no | `reasoning.effort` for OpenAI reasoning models (default `low`) |
 | `OPENAI_REASONING_SUMMARY` | no | `auto` (default), `concise` or `detailed` — reasoning summary shown as thoughts |
-| `ANTHROPIC_EFFORT` | no | Claude `output_config.effort` (default `medium`) |
+| `ANTHROPIC_EFFORT` | no | Claude `output_config.effort` (default `low`) |
+| `RESPONSE_TIME_LIMIT_SECONDS` | no | Hard limit per response, stated to the suspects (default 60) |
+| `THOUGHT_WORD_LIMIT` | no | Thinking word limit, stated to the suspects and applied to displayed thoughts (default 200) |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | on Vercel | Postgres persistence. Run `supabase/schema.sql` first. |
 | `DATA_DIR` | no | Directory for the local JSON store (default `.data/games`) |
 | `MAX_ATTEMPTS` | no | Attempts per model call (default 3) |
@@ -91,6 +93,15 @@ src/app/
 - Configuration is locked when an experiment is created. If the prompt versions change mid-run, for example because of a redeploy, the change is recorded in `configChanges`.
 - No decision is ever invented. Invalid JSON or an invalid action triggers a retry. If every attempt fails, the stage stays open and is marked failed.
 - **Thoughts:** spectators see each model's *reasoning summary*. For OpenAI this is the reasoning summary (`reasoning.summary`), available on reasoning models only. For Claude it is summarized thinking (`thinking.display: "summarized"`). These are provider-written summaries, not the raw chain of thought, which neither provider exposes. They appear at two points: before the suspect writes its message, and after it reads the other suspect's message. They are sealed like everything else, never shown to the other suspect, and never included in any prompt. Requesting a summary changes visibility only, not how the model reasons.
+
+### Response rules
+
+- **Time limit:** each suspect has at most one minute per response (`RESPONSE_TIME_LIMIT_SECONDS`), and every prompt says so. The engine aborts any request that reaches the limit. A timed-out attempt is logged and retried like any other failure. It is never replaced with an invented answer.
+- **Thinking length:** every prompt asks the suspect to keep its thinking to 200 words or fewer. The providers offer no hard cap on internal reasoning for these models, so this is enforced in three ways:
+  - effort defaults to `low`;
+  - the instruction appears in every prompt;
+  - displayed thoughts are trimmed at 200 words. The full summary stays in the audit log.
+- **No internet:** neither model gets any tools. Tool parameters (`tools`, `tool_choice`, `mcp_servers`, …) are stripped from every request, and models with built-in web search (`*search*`, `*deep-research*`) are rejected at setup. Tests check the outgoing request bodies.
 
 ### Private leaning (communication impact)
 

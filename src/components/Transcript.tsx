@@ -29,7 +29,7 @@ export function SuspectColumn({
       </div>
       {message ? (
         <>
-          <Thoughts text={message.thoughts} label="Thoughts before writing" color={color} animate={animate.message} />
+          <Thoughts text={message.thoughts} trimmed={message.thoughtsTrimmed} label="Thoughts before writing" color={color} animate={animate.message} />
           <div className={animate.message ? "rise" : ""} style={{ animationDelay: "0.6s" }}>
             <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-dim">Message to {other.name}</div>
             <p
@@ -46,7 +46,7 @@ export function SuspectColumn({
         <p className="font-mono text-xs text-dim">No message yet for this case.</p>
       )}
       {after ? (
-        <Thoughts text={after.thoughts} label={`Thoughts after reading ${other.name}'s message`} color={color} animate={animate.after} />
+        <Thoughts text={after.thoughts} trimmed={after.thoughtsTrimmed} label={`Thoughts after reading ${other.name}'s message`} color={color} animate={animate.after} />
       ) : pending === "deciding" ? (
         <Thinking label="Reading message · deciding" />
       ) : null}

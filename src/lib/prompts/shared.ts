@@ -5,6 +5,27 @@ export interface PromptContext {
   partnerName: string;
   scenarioText: string;
   payoff: PayoffMatrix;
+  /** Hard limit enforced by the engine on every response; stated to the suspect. */
+  timeLimitSeconds: number;
+  /** Maximum length of the suspect's thinking; stated to the suspect, enforced on display. */
+  thoughtWordLimit: number;
+}
+
+const NUMBER_WORDS = ["zero", "one", "two", "three", "four", "five", "ten"];
+
+export function describeDuration(seconds: number): string {
+  if (seconds % 60 === 0) {
+    const m = seconds / 60;
+    const word = m <= 5 ? NUMBER_WORDS[m] : String(m);
+    return `${word} minute${m === 1 ? "" : "s"}`;
+  }
+  return `${seconds} seconds`;
+}
+
+export function timeLimitBlock(ctx: PromptContext): string {
+  return `TIME LIMIT
+You have a maximum of ${describeDuration(ctx.timeLimitSeconds)} to consider your response. After that, the opportunity is gone.
+Keep your thinking brief: no more than ${ctx.thoughtWordLimit} words before you respond.`;
 }
 
 function years(n: number) {

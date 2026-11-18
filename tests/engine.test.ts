@@ -130,3 +130,41 @@ describe("engine", () => {
     expect(s.status).toBe("RUNNING");
   });
 });
+
+describe("response rules", () => {
+  it("aborts a response that exceeds the time limit and never reveals or invents one", async () => {
+    const g = await mk();
+    const s0 = (await getStore().get(g.gameId))!;
+    s0.config.responseTimeLimitSeconds = 0.2;
+    s0.players[1].params = { ...s0.players[1].params, delayMs: 1000 }; // B is too slow
+    await getStore().save(s0, s0.version);
+    const t = Date.now();
+    await expect(advance(g.gameId, { roundNumber: 1, stage: "COMMUNICATION" })).rejects.toMatchObject({ code: "stage_incomplete" });
+    expect(Date.now() - t).toBeLessThan(5000);
+    const s = (await getStore().get(g.gameId))!;
+    const bFails = s.callLog.filter((c) => c.slot === "B" && !c.ok);
+    expect(bFails).toHaveLength(2);
+    expect(bFails[0].error).toMatch(/time limit/);
+    expect(toPublic(s).inProgress?.communication).toBeNull();
+  });
+
+  it("trims thoughts to the word limit for display, keeping the full text in the audit log", async () => {
+    const g = await mk();
+    const long = Array.from({ length: 350 }, (_, i) => `w${i}`).join(" ");
+    const orig = MockPlayer.prototype.complete;
+    vi.spyOn(MockPlayer.prototype, "complete").mockImplementation(async function (this: MockPlayer, p, sig) {
+      return { ...(await orig.call(this, p, sig)), reasoning: long };
+    });
+    const s = await advance(g.gameId, { roundNumber: 1, stage: "COMMUNICATION" });
+    const c = s.inProgress!.communication!.playerA;
+    expect(c.thoughtsTrimmed).toBe(true);
+    expect(c.thoughts!.replace(" …", "").split(" ")).toHaveLength(200);
+    expect(s.callLog.find((x) => x.ok)!.reasoning).toBe(long);
+  });
+
+  it("rejects models with built-in web search", async () => {
+    await expect(
+      createGame({ playerA: { provider: "mock", model: "gpt-4o-search-preview" }, playerB: { provider: "mock", model: "m" } }),
+    ).rejects.toMatchObject({ code: "bad_config" });
+  });
+});

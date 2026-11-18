@@ -14,7 +14,7 @@ import { parseDecision, parseMessage } from "../prompts/schemas";
 import { scenarioForRound } from "../prompts/scenarios";
 import { getStore, VersionConflictError } from "../store";
 import { computeSentences, DEFAULT_PAYOFF, phaseForRound } from "./payoff";
-import { buildDecisionPrompt, buildMessagePrompt } from "./prompts";
+import { buildDecisionPrompt, buildMessagePrompt, thoughtWordLimitFor, timeLimitFor } from "./prompts";
 import type {
   CallRecord,
   GameState,
@@ -27,6 +27,18 @@ import type {
 } from "./types";
 
 export const LOCK_TTL_MS = 6 * 60 * 1000;
+/** Thoughts longer than this are trimmed for display (full text stays in the audit log). */
+export const THOUGHT_WORD_LIMIT = Math.max(20, Number(process.env.THOUGHT_WORD_LIMIT || 200));
+
+export function limitWords(text: string | null, max: number): { text: string | null; trimmed: boolean } {
+  if (!text) return { text, trimmed: false };
+  const words = text.trim().split(/\s+/);
+  if (words.length <= max) return { text, trimmed: false };
+  return { text: words.slice(0, max).join(" ") + " …", trimmed: true };
+}
+
+/** Each suspect gets at most this long per response; the request is aborted after it. */
+export const RESPONSE_TIME_LIMIT_SECONDS = Math.max(5, Number(process.env.RESPONSE_TIME_LIMIT_SECONDS || 60));
 const SLOTS: PlayerSlot[] = ["A", "B"];
 const PERSONAS: Record<PlayerSlot, string> = { A: "Alex Mercer", B: "Jordan Hayes" };
 
@@ -37,6 +49,30 @@ export class EngineError extends Error {
     public code: string,
   ) {
     super(message);
+  }
+}
+
+export class TimeLimitError extends Error {
+  constructor(seconds: number) {
+    super(`No response within the ${seconds}s time limit`);
+  }
+}
+
+/** Runs fn with an AbortSignal that fires after `seconds`; rejects with TimeLimitError at the limit. */
+export async function withTimeLimit<T>(seconds: number, fn: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const limit = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new TimeLimitError(seconds));
+    }, seconds * 1000);
+  });
+  try {
+    return await Promise.race([fn(controller.signal), limit]);
+  } finally {
+    clearTimeout(timer);
+    limit.catch(() => undefined);
   }
 }
 
@@ -62,6 +98,8 @@ export function createGameState(input: CreateGameInput): GameState {
     if (!prov.available()) throw new EngineError(`Provider ${cfg.provider} is not configured (missing API key?)`, 400, "provider_unavailable");
     const model = (cfg.model || prov.defaultModel()).trim();
     if (!/^[\w.:\-/@]+$/.test(model)) throw new EngineError("Invalid model identifier", 400, "bad_config");
+    // Models with built-in web access are not allowed: suspects must not search the internet.
+    if (/search|deep-research|browse/i.test(model)) throw new EngineError("Models with built-in web search are not allowed", 400, "bad_config");
     return { slot, name: prov.displayName, provider: cfg.provider, model, params: prov.defaultParams(model), persona: { name: PERSONAS[slot] } };
   };
   const a = mk("A", input.playerA);
@@ -86,6 +124,9 @@ export function createGameState(input: CreateGameInput): GameState {
       totalRounds,
       memoryStartRound,
       communicationEnabled: true,
+      responseTimeLimitSeconds: RESPONSE_TIME_LIMIT_SECONDS,
+      thoughtWordLimit: THOUGHT_WORD_LIMIT,
+      toolsEnabled: false,
       payoff: DEFAULT_PAYOFF,
       promptVersions: PROMPT_VERSIONS,
     },
@@ -285,6 +326,7 @@ async function callWithRetries<T>(
   const cfg = state.players.find((p) => p.id === slot)!;
   const player = createPlayer(cfg);
   let lastMsg = "";
+  let timedOut = () => false;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const startedAt = new Date().toISOString();
     const rec: CallRecord = {
@@ -312,7 +354,11 @@ async function callWithRetries<T>(
       usage: null,
     };
     try {
-      const res = await player.complete(prompt);
+      // Hard time limit: the request is aborted once the stated limit is reached.
+      const res = await withTimeLimit(timeLimitFor(state), (signal) => {
+        timedOut = () => signal.aborted;
+        return player.complete(prompt, signal);
+      });
       rec.rawResponse = res.rawText;
       rec.reasoning = res.reasoning;
       rec.servedModel = res.servedModel;
@@ -324,7 +370,9 @@ async function callWithRetries<T>(
       state.callLog.push(rec);
       return { parsed, reasoning: res.reasoning };
     } catch (e) {
-      const info = classifyError(e);
+      const info = timedOut() || e instanceof TimeLimitError
+        ? { retryable: true, message: new TimeLimitError(timeLimitFor(state)).message }
+        : classifyError(e);
       rec.error = info.message;
       rec.finishedAt = new Date().toISOString();
       state.callLog.push(rec);
@@ -359,7 +407,8 @@ async function runCommunication(state: GameState, persist: () => Promise<void>) 
   const prompts = Object.fromEntries(pending.map((s) => [s, buildMessagePrompt(state, round, s)]));
   await collect(pending, async (slot) => {
     const { parsed: r, reasoning } = await callWithRetries(state, round, "COMMUNICATION", slot, prompts[slot], parseMessage);
-    round.sealedCommunication[slot] = { thoughts: reasoning, message: r.message, privateLeaning: r.privateLeaning, timestamp: new Date().toISOString() };
+    const t = limitWords(reasoning, thoughtWordLimitFor(state));
+    round.sealedCommunication[slot] = { thoughts: t.text, thoughtsTrimmed: t.trimmed, message: r.message, privateLeaning: r.privateLeaning, timestamp: new Date().toISOString() };
     await persist(); // sealed: stored, never returned to the browser
   });
   const { A, B } = round.sealedCommunication;
@@ -374,7 +423,8 @@ async function runDecision(state: GameState, persist: () => Promise<void>) {
   const prompts = Object.fromEntries(pending.map((s) => [s, buildDecisionPrompt(state, round, s)]));
   await collect(pending, async (slot) => {
     const { parsed: r, reasoning } = await callWithRetries(state, round, "DECISION", slot, prompts[slot], parseDecision);
-    round.sealedDecisions[slot] = { action: r.action, explanation: r.explanation, thoughts: reasoning, timestamp: new Date().toISOString() };
+    const t = limitWords(reasoning, thoughtWordLimitFor(state));
+    round.sealedDecisions[slot] = { action: r.action, explanation: r.explanation, thoughts: t.text, thoughtsTrimmed: t.trimmed, timestamp: new Date().toISOString() };
     await persist();
   });
   const { A, B } = round.sealedDecisions;

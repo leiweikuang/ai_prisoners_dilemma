@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { BaseAIPlayer, ProviderError, type CompletionResult, type StructuredPrompt } from "./types";
+import { BaseAIPlayer, ProviderError, withoutTools, type CompletionResult, type StructuredPrompt } from "./types";
 
 export class ClaudePlayer extends BaseAIPlayer {
   provider = "anthropic";
@@ -23,12 +23,14 @@ export class ClaudePlayer extends BaseAIPlayer {
       // "summarized" returns a readable summary of Claude's thinking for spectators.
       // It changes visibility only, not how Claude reasons.
       thinking: { type: "adaptive", display: "summarized" },
-      output_config: { effort: process.env.ANTHROPIC_EFFORT || "medium" },
+      // Low effort keeps thinking short enough for the time and word limits.
+      output_config: { effort: process.env.ANTHROPIC_EFFORT || "low" },
     };
   }
 
   async complete(prompt: StructuredPrompt, signal?: AbortSignal): Promise<CompletionResult> {
-    const { output_config, ...rest } = this.params as { output_config?: Record<string, unknown> } & Record<string, unknown>;
+    // No tools: no web search, web fetch or code execution.
+    const { output_config, ...rest } = withoutTools(this.params) as { output_config?: Record<string, unknown> } & Record<string, unknown>;
     const res = await this.client.messages.create(
       {
         model: this.model,

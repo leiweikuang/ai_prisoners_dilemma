@@ -26,9 +26,15 @@ export class MockPlayer extends BaseAIPlayer {
   static defaultParams(_model?: string) {
     return { confessProbability: 0.4, delayMs: Number(process.env.MOCK_DELAY_MS ?? 1500) };
   }
-  async complete(prompt: StructuredPrompt): Promise<CompletionResult> {
+  async complete(prompt: StructuredPrompt, signal?: AbortSignal): Promise<CompletionResult> {
     const p = (this.params.confessProbability as number) ?? 0.4;
-    await new Promise((r) => setTimeout(r, (this.params.delayMs as number) ?? 1200));
+    await new Promise<void>((resolve, reject) => {
+      const t = setTimeout(resolve, (this.params.delayMs as number) ?? 1200);
+      signal?.addEventListener("abort", () => {
+        clearTimeout(t);
+        reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+      });
+    });
     const action = Math.random() < p ? "CONFESS" : "DENY";
     let body: object;
     if (prompt.schema.name === "suspect_message") {

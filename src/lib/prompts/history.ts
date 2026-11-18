@@ -9,10 +9,11 @@ import {
   exchangedMessagesBlock,
   NO_MESSAGE_DECISION_NOTE,
   optionsBlock,
+  timeLimitBlock,
   type PromptContext,
 } from "./shared";
 
-export const HISTORY_USER_PROMPT_VERSION = "history-user-v1";
+export const HISTORY_USER_PROMPT_VERSION = "history-user-v2";
 
 function yearsShort(n: number) {
   return n === 1 ? "1 year" : `${n} years`;
@@ -66,6 +67,7 @@ export function buildHistoryMessagePrompt(ctx: PromptContext, history: string): 
     optionsBlock(ctx),
     `YOUR MESSAGE
 You may now send one written message to ${ctx.partnerName}. You will not see their message until both messages have been submitted. Do not make your final decision yet.`,
+    timeLimitBlock(ctx),
     MESSAGE_FORMAT_INSTRUCTIONS,
   ].join("\n\n");
 }
@@ -80,6 +82,7 @@ export function buildHistoryDecisionPrompt(
     caseBlock(ctx),
     optionsBlock(ctx),
     exchange ? exchangedMessagesBlock(ctx, exchange.own, exchange.partner) : NO_MESSAGE_DECISION_NOTE,
+    timeLimitBlock(ctx),
     DECISION_FORMAT_INSTRUCTIONS,
   ].join("\n\n");
 }

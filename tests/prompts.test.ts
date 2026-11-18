@@ -83,6 +83,11 @@ describe("prompt integrity", () => {
         expect(d.user).toContain(`Your message to`);
         expect(d.user.indexOf(`${slot}-CUR-${r}`)).toBeLessThan(d.user.indexOf(`${slot === "A" ? "B" : "A"}-CUR-${r}`));
         expect(d.user).toContain("You are not obligated to keep any promises you made.");
+        // Rules stated to the suspect in both stages.
+        for (const x of [m, d]) {
+          expect(x.user).toContain("maximum of one minute");
+          expect(x.user).toContain("no more than 200 words");
+        }
         // Message prompt must never include the current round's messages.
         expect(m.user).not.toMatch(/[AB]-CUR-/);
       }

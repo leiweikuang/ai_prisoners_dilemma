@@ -48,6 +48,12 @@ export interface ExperimentConfig {
   totalRounds: number;
   memoryStartRound: number;
   communicationEnabled: boolean;
+  /** Hard per-response limit (each API attempt is aborted after this). Stated to the suspects. */
+  responseTimeLimitSeconds: number;
+  /** Models get no tools: no web search, browsing or code execution. */
+  toolsEnabled: false;
+  /** Thoughts are limited to this many words: stated to the suspects, and trimmed for display. */
+  thoughtWordLimit: number;
   payoff: PayoffMatrix;
   promptVersions: PromptVersions;
 }
@@ -56,6 +62,8 @@ export interface CommunicationEntry {
   message: string;
   /** Provider reasoning summary written before the message. Spectators only. */
   thoughts?: string | null;
+  /** True when the provider's summary exceeded the word limit and was trimmed for display. */
+  thoughtsTrimmed?: boolean;
   /** Private, never shown to the other suspect. Used to measure communication impact. */
   privateLeaning: Action | null;
   timestamp: string;
@@ -66,6 +74,7 @@ export interface DecisionEntry {
   explanation: string;
   /** Provider reasoning summary after reading the other suspect's message. Spectators only. */
   thoughts?: string | null;
+  thoughtsTrimmed?: boolean;
   prisonYears: number;
   timestamp: string;
 }

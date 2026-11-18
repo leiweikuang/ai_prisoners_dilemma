@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { BaseAIPlayer, ProviderError, type CompletionResult, type StructuredPrompt } from "./types";
+import { BaseAIPlayer, ProviderError, withoutTools, type CompletionResult, type StructuredPrompt } from "./types";
 
 export class OpenAIPlayer extends BaseAIPlayer {
   provider = "openai";
@@ -26,7 +26,8 @@ export class OpenAIPlayer extends BaseAIPlayer {
     if (OpenAIPlayer.isReasoningModel(model)) {
       p.reasoning = {
         summary: process.env.OPENAI_REASONING_SUMMARY || "auto",
-        ...(process.env.OPENAI_REASONING_EFFORT ? { effort: process.env.OPENAI_REASONING_EFFORT } : {}),
+        // Low effort keeps thinking short enough for the time and word limits.
+        effort: process.env.OPENAI_REASONING_EFFORT || "low",
       };
     }
     return p;
@@ -59,7 +60,8 @@ export class OpenAIPlayer extends BaseAIPlayer {
           format: { type: "json_schema", name: prompt.schema.name, schema: prompt.schema.schema, strict: true },
         },
         store: false,
-        ...(params as object),
+        // No tools: no web search, file search or code execution.
+        ...(withoutTools(params) as object),
       },
       { signal },
     );

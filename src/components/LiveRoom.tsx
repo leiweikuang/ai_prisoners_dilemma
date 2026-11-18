@@ -315,6 +315,9 @@ export function LiveView({ id }: { id: string }) {
       </div>
 
       <div className="mt-6 text-center">
+        <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-600">
+          Rules: {game.config.responseTimeLimitSeconds ?? 60}s per response · thinking ≤ {game.config.thoughtWordLimit ?? 200} words · no internet access
+        </div>
         {caseTitle && <div className="font-mono text-[11px] uppercase tracking-[0.3em] text-dim">Case: {caseTitle}</div>}
         <div className="mt-1 font-display text-xl uppercase tracking-[0.2em] text-zinc-200 md:text-2xl">{banner}</div>
         {view === "countdown" && <div key={countdown} className="stamp mt-2 font-display text-7xl text-lamp">{countdown}</div>}

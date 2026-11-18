@@ -49,6 +49,19 @@ export abstract class BaseAIPlayer implements AIPlayer {
   }
 }
 
+/**
+ * Request parameters that could give a model tools (web search, browsing,
+ * code execution, MCP servers). They are always stripped before sending:
+ * suspects never have access to outside information.
+ */
+export const TOOL_PARAM_KEYS = ["tools", "tool_choice", "mcp_servers", "container", "web_search_options", "parallel_tool_calls"];
+
+export function withoutTools(params: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...params };
+  for (const k of TOOL_PARAM_KEYS) delete out[k];
+  return out;
+}
+
 export class ProviderError extends Error {
   constructor(
     message: string,
