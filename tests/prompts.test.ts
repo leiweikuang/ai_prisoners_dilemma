@@ -46,6 +46,33 @@ function stateAt(round: number): { state: GameState; ip: InProgressRound } {
   return { state, ip };
 }
 
+describe("Chinese prompts", () => {
+  for (let r = 1; r <= 20; r++) {
+    it(`round ${r}: Chinese prompts are leak-free, fully Chinese-framed, with rules and history`, () => {
+      const { state, ip } = stateAt(r);
+      ip.language = "zh";
+      for (const slot of ["A", "B"] as const) {
+        for (const p of [buildMessagePrompt(state, ip, slot), buildDecisionPrompt(state, ip, slot)]) {
+          expect(findForbiddenTerms(p.system)).toEqual([]);
+          expect(p.user).toContain("你的处境");
+          expect(p.user).toContain("后果有多严重");
+          expect(p.user).toContain("一分钟");
+          expect(p.user).toContain("不超过200字");
+          expect(p.user).not.toContain("YOUR SITUATION");
+          if (r >= 11) expect(p.user).toContain("以往案件的记录");
+        }
+      }
+    });
+  }
+  it("every case has a Chinese translation without forbidden terms", () => {
+    for (const s of SCENARIOS) {
+      expect(s.zh, s.id).toBeDefined();
+      expect(findForbiddenTerms(s.zh!.title + s.zh!.description), s.id).toEqual([]);
+      expect(s.zh!.description).toContain("重罪");
+    }
+  });
+});
+
 describe("prompt integrity", () => {
   it("system prompts and scenarios contain no experimental terminology", () => {
     expect(findForbiddenTerms(DECISION_SYSTEM_PROMPT)).toEqual([]);

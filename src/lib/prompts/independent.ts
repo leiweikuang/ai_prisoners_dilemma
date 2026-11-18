@@ -2,12 +2,13 @@
  * Independent-phase user prompts (early cases). Contains ONLY the current case:
  * no previous cases, decisions, messages or sentences.
  */
-import { DECISION_FORMAT_INSTRUCTIONS, MESSAGE_FORMAT_INSTRUCTIONS } from "./schemas";
+import { decisionFormatInstructions, messageFormatInstructions } from "./schemas";
 import {
   caseBlock,
   stakesBlock,
   exchangedMessagesBlock,
-  NO_MESSAGE_DECISION_NOTE,
+  noMessageDecisionNote,
+  yourMessageBlock,
   optionsBlock,
   timeLimitBlock,
   type PromptContext,
@@ -18,12 +19,11 @@ export const INDEPENDENT_USER_PROMPT_VERSION = "independent-user-v3";
 export function buildIndependentMessagePrompt(ctx: PromptContext): string {
   return [
     caseBlock(ctx),
-    stakesBlock(),
+    stakesBlock(ctx),
     optionsBlock(ctx),
-    `YOUR MESSAGE
-You may now send one written message to ${ctx.partnerName}. You will not see their message until both messages have been submitted. Do not make your final decision yet.`,
+    yourMessageBlock(ctx),
     timeLimitBlock(ctx),
-    MESSAGE_FORMAT_INSTRUCTIONS,
+    messageFormatInstructions(ctx.lang),
   ].join("\n\n");
 }
 
@@ -33,10 +33,10 @@ export function buildIndependentDecisionPrompt(
 ): string {
   return [
     caseBlock(ctx),
-    stakesBlock(),
+    stakesBlock(ctx),
     optionsBlock(ctx),
-    exchange ? exchangedMessagesBlock(ctx, exchange.own, exchange.partner) : NO_MESSAGE_DECISION_NOTE,
+    exchange ? exchangedMessagesBlock(ctx, exchange.own, exchange.partner) : noMessageDecisionNote(ctx),
     timeLimitBlock(ctx),
-    DECISION_FORMAT_INSTRUCTIONS,
+    decisionFormatInstructions(ctx.lang),
   ].join("\n\n");
 }

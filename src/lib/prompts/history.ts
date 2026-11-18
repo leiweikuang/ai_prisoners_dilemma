@@ -2,13 +2,15 @@
  * History-aware user prompts (later cases). Presents the factual record of
  * previous cases neutrally: no interpretation, summary or suggested approach.
  */
-import type { PlayerSlot, RoundResult } from "../game/types";
-import { DECISION_FORMAT_INSTRUCTIONS, MESSAGE_FORMAT_INSTRUCTIONS } from "./schemas";
+import type { Lang, PlayerSlot, RoundResult } from "../game/types";
+import { decisionFormatInstructions, messageFormatInstructions } from "./schemas";
+import { scenarioById, scenarioTitle } from "./scenarios";
 import {
   caseBlock,
   stakesBlock,
   exchangedMessagesBlock,
-  NO_MESSAGE_DECISION_NOTE,
+  noMessageDecisionNote,
+  yourMessageBlock,
   optionsBlock,
   timeLimitBlock,
   type PromptContext,
@@ -30,14 +32,22 @@ export function renderHistory(
   slot: PlayerSlot,
   selfName: string,
   partnerName: string,
+  lang: Lang = "en",
 ): string {
   const own = slot === "A" ? "playerA" : "playerB";
   const other = slot === "A" ? "playerB" : "playerA";
   const sorted = [...rounds].sort((x, y) => x.roundNumber - y.roundNumber);
-  const lines: string[] = [
-    `RECORD OF YOUR PREVIOUS CASES WITH ${partnerName.toUpperCase()}`,
-    `You and ${partnerName} have been arrested together before. This is the complete record of every previous case, in chronological order. It is the same record ${partnerName} has.`,
-  ];
+  const zh = lang === "zh";
+  const title = (r: RoundResult) => {
+    const sc = scenarioById(r.scenarioId);
+    return sc ? scenarioTitle(sc, lang) : r.scenarioTitle;
+  };
+  const lines: string[] = zh
+    ? [`你与${partnerName}以往案件的记录`, `你和${partnerName}以前曾一起被捕。以下是按时间顺序排列的以往每一起案件的完整记录。${partnerName}手上的记录与此相同。`]
+    : [
+        `RECORD OF YOUR PREVIOUS CASES WITH ${partnerName.toUpperCase()}`,
+        `You and ${partnerName} have been arrested together before. This is the complete record of every previous case, in chronological order. It is the same record ${partnerName} has.`,
+      ];
   let ownTotal = 0;
   let otherTotal = 0;
   sorted.forEach((r, i) => {
@@ -45,32 +55,46 @@ export function renderHistory(
     ownTotal += d[own].prisonYears;
     otherTotal += d[other].prisonYears;
     lines.push("");
-    lines.push(`Case ${i + 1}: ${r.scenarioTitle}`);
-    if (r.communication) {
-      lines.push(`- Your message to ${partnerName}: "${r.communication[own].message}"`);
-      lines.push(`- ${partnerName}'s message to you: "${r.communication[other].message}"`);
+    if (zh) {
+      lines.push(`案件${i + 1}：${title(r)}`);
+      if (r.communication) {
+        lines.push(`- 你写给${partnerName}的消息：“${r.communication[own].message}”`);
+        lines.push(`- ${partnerName}写给你的消息：“${r.communication[other].message}”`);
+      }
+      lines.push(`- 你的陈述：${statementZh(d[own].action)}`);
+      lines.push(`- ${partnerName}的陈述：${statementZh(d[other].action)}`);
+      lines.push(`- 判决：你被判${d[own].prisonYears}年；${partnerName}被判${d[other].prisonYears}年。`);
+    } else {
+      lines.push(`Case ${i + 1}: ${title(r)}`);
+      if (r.communication) {
+        lines.push(`- Your message to ${partnerName}: "${r.communication[own].message}"`);
+        lines.push(`- ${partnerName}'s message to you: "${r.communication[other].message}"`);
+      }
+      lines.push(`- Your statement: ${statement(d[own].action)}`);
+      lines.push(`- ${partnerName}'s statement: ${statement(d[other].action)}`);
+      lines.push(`- Sentence: you received ${yearsShort(d[own].prisonYears)}; ${partnerName} received ${yearsShort(d[other].prisonYears)}.`);
     }
-    lines.push(`- Your statement: ${statement(d[own].action)}`);
-    lines.push(`- ${partnerName}'s statement: ${statement(d[other].action)}`);
-    lines.push(`- Sentence: you received ${yearsShort(d[own].prisonYears)}; ${partnerName} received ${yearsShort(d[other].prisonYears)}.`);
   });
   lines.push("");
-  lines.push(`Total prison time so far: you ${yearsShort(ownTotal)}; ${partnerName} ${yearsShort(otherTotal)}.`);
+  lines.push(zh ? `目前为止的总刑期：你${ownTotal}年；${partnerName}${otherTotal}年。` : `Total prison time so far: you ${yearsShort(ownTotal)}; ${partnerName} ${yearsShort(otherTotal)}.`);
   lines.push("");
-  lines.push(`The current case is a new, separate case.`);
+  lines.push(zh ? "当前案件是一起新的、独立的案件。" : `The current case is a new, separate case.`);
   return lines.join("\n");
+}
+
+function statementZh(a: "CONFESS" | "DENY") {
+  return a === "CONFESS" ? "认罪（CONFESS）" : "否认（DENY）";
 }
 
 export function buildHistoryMessagePrompt(ctx: PromptContext, history: string): string {
   return [
     history,
     caseBlock(ctx),
-    stakesBlock(),
+    stakesBlock(ctx),
     optionsBlock(ctx),
-    `YOUR MESSAGE
-You may now send one written message to ${ctx.partnerName}. You will not see their message until both messages have been submitted. Do not make your final decision yet.`,
+    yourMessageBlock(ctx),
     timeLimitBlock(ctx),
-    MESSAGE_FORMAT_INSTRUCTIONS,
+    messageFormatInstructions(ctx.lang),
   ].join("\n\n");
 }
 
@@ -82,10 +106,10 @@ export function buildHistoryDecisionPrompt(
   return [
     history,
     caseBlock(ctx),
-    stakesBlock(),
+    stakesBlock(ctx),
     optionsBlock(ctx),
-    exchange ? exchangedMessagesBlock(ctx, exchange.own, exchange.partner) : NO_MESSAGE_DECISION_NOTE,
+    exchange ? exchangedMessagesBlock(ctx, exchange.own, exchange.partner) : noMessageDecisionNote(ctx),
     timeLimitBlock(ctx),
-    DECISION_FORMAT_INSTRUCTIONS,
+    decisionFormatInstructions(ctx.lang),
   ].join("\n\n");
 }

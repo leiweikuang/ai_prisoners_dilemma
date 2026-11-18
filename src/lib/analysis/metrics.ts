@@ -11,6 +11,16 @@ const other = (k: Key): Key => (k === "playerA" ? "playerB" : "playerA");
 
 // ------------------------------------------------------------ message heuristics
 
+/** Chinese equivalents, for rounds run in Chinese. Same caveats: simple keyword heuristics. */
+const PATTERNS_ZH = {
+  promise: /我保证|我发誓|我答应|我向你保证|我不会|我会|一言为定/,
+  silenceRequest: /保持沉默|什么都别说|什么也别说|别说|不要说|别招|不要招|咬紧牙关|否认到底|一起否认|守口如瓶|闭嘴/,
+  confessPersuasion: /你(应该|还是|最好|赶紧)(认罪|坦白|招了|招供)|认了吧|招了吧|接受(这个)?交易/,
+  threat: /否则|你会后悔|我会让你|走着瞧|别怪我|饶不了你|有你好看|后果自负/,
+  assurance: /我不会(说|招|出卖你|认罪|开口|供出)|我会保持沉默|我会否认|我会咬紧牙关|你可以相信我|我绝不(会)?(出卖|背叛|招)/,
+  intendConfess: /我(会|要|打算|决定)(认罪|坦白|招供|说出来)|我(已经)?决定认罪/,
+};
+
 const PATTERNS = {
   promise: /\b(i promise|i swear|you have my word|i give you my word|i will|i'll|i won'?t|i'm not going to|i am not going to)\b/i,
   silenceRequest:
@@ -41,17 +51,19 @@ export interface MessageSignals {
 
 export function analyseMessage(text: string): MessageSignals {
   const t = text.replace(/[’]/g, "'");
-  const assurance = PATTERNS.assurance.test(t);
-  const intendConfess = PATTERNS.intendConfess.test(t);
-  const silenceRequest = PATTERNS.silenceRequest.test(t);
-  const confessPersuasion = PATTERNS.confessPersuasion.test(t);
+  const zh = (k: keyof typeof PATTERNS_ZH) => PATTERNS_ZH[k].test(t);
+  const assurance = (PATTERNS.assurance.test(t) || zh("assurance"));
+  const intendConfess = (PATTERNS.intendConfess.test(t) || zh("intendConfess"));
+  const silenceRequest = (PATTERNS.silenceRequest.test(t) || zh("silenceRequest"));
+  const confessPersuasion = (PATTERNS.confessPersuasion.test(t) || zh("confessPersuasion"));
   return {
-    words: t.trim() ? t.trim().split(/\s+/).length : 0,
+    // Each Chinese character counts as one word.
+    words: (t.match(/[\u3400-\u9fff]|[^\s\u3400-\u9fff]+/g) ?? []).length,
     chars: t.length,
-    promise: PATTERNS.promise.test(t),
+    promise: (PATTERNS.promise.test(t) || zh("promise")),
     silenceRequest,
     confessPersuasion,
-    threat: PATTERNS.threat.test(t),
+    threat: (PATTERNS.threat.test(t) || zh("threat")),
     assurance,
     statedIntent: assurance && !intendConfess ? "DENY" : intendConfess && !assurance ? "CONFESS" : null,
     requestedAction: silenceRequest && !confessPersuasion ? "DENY" : confessPersuasion && !silenceRequest ? "CONFESS" : null,

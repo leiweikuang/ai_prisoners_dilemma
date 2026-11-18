@@ -11,8 +11,12 @@ ROUND START → COMMUNICATION (both messages sealed until both exist, then revea
             → sentences calculated by the engine → history updated → next round
 ```
 
-- **Phase 1 (rounds 1–10):** independent cases. No history: no previous decisions, messages or sentences.
-- **Phase 2 (rounds 11–20):** each prompt includes the complete public record of every previous case, in chronological order. That covers both messages, both statements, the sentences, and the running totals.
+- **Defaults:** 5 rounds, with history available from round 1. Both are configurable on the setup page.
+- **Independent phase (optional):** if history is introduced at a later round, the rounds before it are independent cases with no history at all.
+- **History-aware phase:** each prompt includes the complete public record of every previous case, in chronological order. That covers both messages, both statements, the sentences, and the running totals.
+- **Suspects:** each model is called by a nickname in the story (ChatGPT → Sammy, Claude → Darry, DeepSeek → Wendy, Doubao → Donna, Grok → Elly) and shown with its profile picture (`src/lib/profiles.ts`, `public/avatars/`).
+- **Cases:** every case is a serious felony (`src/lib/prompts/scenarios.ts`), and every prompt includes a "What is at stake" section describing how severe prison would be.
+- **Language:** English or Chinese, chosen on the setup page and switchable between rounds (never mid-round). The switch changes both the page and what the models read and write: system prompts, cases, rules, history and response instructions. Each round records its language, and every switch is written to the experiment's change log. In Chinese, the 200-word thinking limit means 200 characters (字).
 
 | | B confesses | B denies |
 |---|---|---|
@@ -122,7 +126,7 @@ The results page reports these as observations. An assurance followed by a confe
 ## Running a complete experiment
 
 1. Set both API keys and start the app.
-2. On the setup page, choose the models. The defaults are 20 rounds, with history introduced at round 11.
+2. On the setup page, choose the models and the language. The defaults are 5 rounds, with history from round 1.
 3. Press **Begin interrogation**, then **Start experiment (auto)**. A round takes roughly 30–90 seconds, depending on the models.
 4. **Pause** takes effect after the current round finishes. A round is never interrupted. **Resume** continues the run.
 5. When the experiment completes, open **View final results**, and export the audit log if you need it.

@@ -13,6 +13,15 @@ const MESSAGES = [
   "I won't say a word. You have my word on that.",
 ];
 
+const MESSAGES_ZH = [
+  "我们要团结。什么都别说，我们都只会判一年。",
+  "我会保持沉默。你也一样——别把我们俩都害了。",
+  "顾好你自己吧。在这里我什么都保证不了。",
+  "你要是敢开口，我会让所有人知道你干了什么。保持沉默。",
+  "说实话，我觉得你还是认罪吧，早点了结。",
+  "我一个字都不会说。我向你保证。",
+];
+
 export class MockPlayer extends BaseAIPlayer {
   provider = "mock";
   constructor(
@@ -37,6 +46,20 @@ export class MockPlayer extends BaseAIPlayer {
     });
     const action = Math.random() < p ? "CONFESS" : "DENY";
     let body: object;
+    const zh = /[\u4e00-\u9fff]/.test(prompt.user);
+    if (zh) {
+      body =
+        prompt.schema.name === "suspect_message"
+          ? { message: MESSAGES_ZH[Math.floor(Math.random() * MESSAGES_ZH.length)], private_leaning: action }
+          : { action, explanation: action === "CONFESS" ? "我不能把十年押在别人的沉默上。我把实情告诉警方。" : "我什么都不会说。我相信我们都会守口如瓶。" };
+      const reasoning =
+        prompt.schema.name === "suspect_message"
+          ? `权衡一下：如果我们都不说，各判一年；可我不知道对方会怎么做。${action === "DENY" ? "倾向于沉默" : "倾向于开口"}——无论如何，消息要让对方保持沉默。`
+          : action === "DENY"
+            ? "读了对方的消息。听起来对方很坚定，我会守住。"
+            : "在这里承诺不值钱。十年的风险太大了。";
+      return { rawText: JSON.stringify(body), reasoning, servedModel: this.model, usage: null };
+    }
     if (prompt.schema.name === "suspect_message") {
       body = { message: MESSAGES[Math.floor(Math.random() * MESSAGES.length)], private_leaning: action };
     } else {

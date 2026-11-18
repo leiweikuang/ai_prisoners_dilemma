@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { CommunicationEntry, PlayerState, PublicGameState, RoundResult, Stage } from "@/lib/game/types";
+import type { CommunicationEntry, Lang, PlayerState, PublicGameState, RoundResult, Stage } from "@/lib/game/types";
 import { HistoryTable } from "@/components/HistoryTable";
-import { ActionBadge, Avatar, providerColor, Thinking, Years } from "@/components/ui";
+import { ActionBadge, Avatar, LanguageToggle, providerColor, Thinking, Years } from "@/components/ui";
+import { LangContext, STRINGS } from "@/lib/i18n";
+import { caseTitle as localCaseTitle } from "@/components/Transcript";
 import { EarlierRounds, SuspectColumn } from "@/components/Transcript";
 
 type View = "idle" | "comm_pending" | "comm_reveal" | "deliberation" | "locked" | "reaction" | "countdown" | "reveal";
@@ -161,8 +163,8 @@ export function LiveView({ id }: { id: string }) {
     return () => clearTimeout(t);
   }, [game, view, runRound]);
 
-  async function controlAction(action: "pause" | "resume") {
-    const r = await call(`/api/games/${id}/control`, { action });
+  async function controlAction(action: "pause" | "resume" | "language", language?: Lang) {
+    const r = await call(`/api/games/${id}/control`, { action, language });
     if (r.ok) {
       fail(null);
       setGame(r.data.game);
@@ -170,13 +172,14 @@ export function LiveView({ id }: { id: string }) {
   }
 
   async function restart() {
-    if (!game || !confirm("Start a new experiment with the same configuration?")) return;
+    if (!game || !confirm(STRINGS[game.language ?? "en"].restartConfirm)) return;
     const [a, b] = game.players;
     const r = await call("/api/games", {
       playerA: { provider: a.provider, model: a.model },
       playerB: { provider: b.provider, model: b.model },
       totalRounds: game.totalRounds,
       memoryStartRound: game.memoryStartRound,
+      language: game.language ?? "en",
     });
     if (r.ok) router.push(`/game/${r.data.game.gameId}`);
     else fail(r.data.error);
@@ -185,18 +188,21 @@ export function LiveView({ id }: { id: string }) {
   if (notFound)
     return (
       <main className="flex flex-1 items-center justify-center font-mono text-dim">
-        Case file not found. <Link className="ml-2 text-lamp underline" href="/">New experiment</Link>
+        {STRINGS.en.notFound} <Link className="ml-2 text-lamp underline" href="/">{STRINGS.en.newExperiment}</Link>
       </main>
     );
   if (!game) return <main className="flex flex-1 items-center justify-center"><Thinking label="Loading case file" /></main>;
 
+  const lang: Lang = game.language ?? "en";
+  const t = STRINGS[lang];
   const [pa, pb] = game.players;
   const lastRound: RoundResult | undefined = game.rounds[game.rounds.length - 1];
   const ip = game.inProgress;
   const showingLast = view === "reveal" || (view === "idle" && !ip?.communication);
   const displayRoundNumber = showingLast && lastRound ? lastRound.roundNumber : Math.min(game.currentRound, game.totalRounds);
   const displayPhase = showingLast && lastRound ? lastRound.phase : ip?.phase ?? game.phase;
-  const caseTitle = showingLast && lastRound ? lastRound.scenarioTitle : ip?.scenarioTitle;
+  const titleSource = showingLast && lastRound ? lastRound : ip;
+  const caseTitle = titleSource ? localCaseTitle(titleSource, lang) : undefined;
   const messages: { playerA: CommunicationEntry; playerB: CommunicationEntry } | null =
     showingLast ? lastRound?.communication ?? null : ip?.communication ?? null;
   const revealRound = showingLast ? lastRound : undefined;
@@ -206,26 +212,26 @@ export function LiveView({ id }: { id: string }) {
   const statusFor = (slot: "A" | "B"): string => {
     switch (view) {
       case "comm_pending":
-        return "Preparing message";
+        return t.stPreparing;
       case "comm_reveal":
-        return "Message delivered";
+        return t.stDelivered;
       case "deliberation":
-        return "Under interrogation · considering response";
+        return t.stInterrogated;
       case "locked":
       case "countdown":
-        return "Decision locked";
+        return t.stLocked;
       case "reaction":
-        return "Decision locked · reflecting";
+        return t.stReflecting;
       case "reveal":
-        return "Statement made";
+        return t.stMade;
       default:
         if (error && ip) {
           const sub = ip.communication ? ip.submitted.decisions[slot] : ip.submitted.communication[slot];
-          return sub ? "Submitted · sealed" : "No response · retry needed";
+          return sub ? t.stSealed : t.stNoResponse;
         }
-        if (game.status === "COMPLETED") return "Case closed";
-        if (ip?.communication) return "Message received · awaiting statement";
-        return "Waiting";
+        if (game.status === "COMPLETED") return t.stClosed;
+        if (ip?.communication) return t.stReceived;
+        return t.stWaiting;
     }
   };
   const active = view === "comm_pending" || view === "deliberation";
@@ -234,14 +240,14 @@ export function LiveView({ id }: { id: string }) {
   const afterRound = view === "reaction" || view === "countdown" ? pendingRound : showingLast ? lastRound : null;
 
   const banner = {
-    idle: game.status === "COMPLETED" ? "All cases closed." : ip?.communication ? "Messages exchanged. Statements pending." : lastRound ? "Between interrogations." : "Suspects in custody. Awaiting interrogation.",
-    comm_pending: "Each suspect may send one message to the other.",
-    comm_reveal: "Both messages submitted. Delivering simultaneously.",
-    deliberation: "Both suspects have received their messages.",
-    locked: "Decisions locked.",
-    reaction: "After reading the messages.",
-    countdown: "Both suspects have made their statements.",
-    reveal: "Both suspects have made their statements.",
+    idle: game.status === "COMPLETED" ? t.bannerAllClosed : ip?.communication ? t.bannerMsgsPending : lastRound ? t.bannerBetween : t.bannerInCustody,
+    comm_pending: t.bannerCommPending,
+    comm_reveal: t.bannerCommReveal,
+    deliberation: t.bannerDeliberation,
+    locked: t.bannerLocked,
+    reaction: t.bannerReaction,
+    countdown: t.bannerStatements,
+    reveal: t.bannerStatements,
   }[view];
 
   const card = (p: PlayerState, slot: "A" | "B") => {
@@ -255,13 +261,13 @@ export function LiveView({ id }: { id: string }) {
           <div className="flex min-w-0 items-center gap-4">
             <Avatar provider={p.provider} name={p.name} size={72} />
             <div className="min-w-0">
-              <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-dim">Suspect {slot} · known as “{p.persona.name}”</div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-dim">{t.suspectKnownAs(slot, p.persona.name)}</div>
               <div className="mt-1 font-display text-3xl uppercase tracking-wide md:text-4xl" style={{ color }}>{p.name}</div>
               <div className="truncate font-mono text-xs text-dim">{p.model}</div>
             </div>
           </div>
           <div className="text-right">
-            <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-dim">Total sentence</div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-dim">{t.totalSentence}</div>
             <Years n={p.cumulativePrisonYears} className="font-display text-3xl md:text-4xl" />
           </div>
         </div>
@@ -275,7 +281,7 @@ export function LiveView({ id }: { id: string }) {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <ActionBadge action={d.action} big animate={view === "reveal"} />
               <div className="text-right">
-                <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-dim">This case</div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-dim">{t.thisCase}</div>
                 <Years n={d.prisonYears} className="font-display text-2xl" />
               </div>
             </div>
@@ -287,22 +293,25 @@ export function LiveView({ id }: { id: string }) {
 
   const maxYears = Math.max(10, pa.cumulativePrisonYears, pb.cumulativePrisonYears);
 
+  const midRound = !!ip || !!game.busy || !["idle", "reveal"].includes(view);
+
   return (
+    <LangContext.Provider value={lang}>
     <main className="mx-auto w-full max-w-6xl px-4 py-8 md:py-10">
       {/* Header */}
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-edge pb-5">
         <div>
-          <Link href="/" className="font-mono text-[10px] uppercase tracking-[0.4em] text-dim hover:text-lamp">← Setup</Link>
-          <h1 className="mt-1 font-display text-3xl uppercase tracking-[0.14em] md:text-5xl">AI Interrogation</h1>
+          <Link href="/" className="font-mono text-[10px] uppercase tracking-[0.4em] text-dim hover:text-lamp">{t.setupLink}</Link>
+          <h1 className="mt-1 font-display text-3xl uppercase tracking-[0.14em] md:text-5xl">{t.title}</h1>
         </div>
         <div className="text-right">
           <div className="font-display text-2xl uppercase tracking-[0.12em] md:text-4xl">
-            Round <span className="text-lamp">{String(displayRoundNumber).padStart(2, "0")}</span>
+            {t.round} <span className="text-lamp">{String(displayRoundNumber).padStart(2, "0")}</span>
             <span className="text-dim"> / {String(game.totalRounds).padStart(2, "0")}</span>
           </div>
           <div className="font-mono text-[11px] uppercase tracking-[0.25em] text-dim">
-            Phase: <span className={displayPhase === "HISTORY_AWARE" ? "text-lamp" : "text-zinc-300"}>
-              {displayPhase === "HISTORY_AWARE" ? "History-aware interrogation" : "Independent interrogation"}
+            {t.phase}: <span className={displayPhase === "HISTORY_AWARE" ? "text-lamp" : "text-zinc-300"}>
+              {displayPhase === "HISTORY_AWARE" ? t.phaseHistory : t.phaseIndependent}
             </span>
           </div>
         </div>
@@ -310,7 +319,7 @@ export function LiveView({ id }: { id: string }) {
 
       {/* Stage tracker */}
       <div className="mt-5 grid grid-cols-3 gap-2 font-mono text-[10px] uppercase tracking-[0.25em]">
-        {["Communication", "Deliberation", "Statement"].map((s, i) => (
+        {t.stages.map((s, i) => (
           <div key={s} className={`border-t-2 pt-2 ${stageIndex === i + 1 ? "border-lamp text-lamp" : stageIndex > i + 1 ? "border-zinc-600 text-zinc-400" : "border-edge text-dim"}`}>
             <span className="mr-2">0{i + 1}</span>{s}
           </div>
@@ -319,9 +328,9 @@ export function LiveView({ id }: { id: string }) {
 
       <div className="mt-6 text-center">
         <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-600">
-          Rules: {game.config.responseTimeLimitSeconds ?? 60}s per response · thinking ≤ {game.config.thoughtWordLimit ?? 200} words · no internet access
+          {t.rules(game.config.responseTimeLimitSeconds ?? 60, game.config.thoughtWordLimit ?? 200)}
         </div>
-        {caseTitle && <div className="font-mono text-[11px] uppercase tracking-[0.3em] text-dim">Case: {caseTitle}</div>}
+        {caseTitle && <div className="font-mono text-[11px] uppercase tracking-[0.3em] text-dim">{t.caseLabel}: {caseTitle}</div>}
         <div className="mt-1 font-display text-xl uppercase tracking-[0.2em] text-zinc-200 md:text-2xl">{banner}</div>
         {view === "countdown" && <div key={countdown} className="stamp mt-2 font-display text-7xl text-lamp">{countdown}</div>}
       </div>
@@ -336,15 +345,15 @@ export function LiveView({ id }: { id: string }) {
       <section className="relative mt-4 overflow-hidden border border-edge bg-panel/60 p-5">
         {(view === "comm_pending" || view === "deliberation") && <div className="scan absolute inset-0" />}
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-dim">Interrogation transcript</div>
+          <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-dim">{t.transcript}</div>
           {(view === "comm_reveal" || view === "reaction") && (
             <button onClick={() => skipRef.current?.()} className="font-mono text-[10px] uppercase tracking-[0.25em] text-dim hover:text-lamp">
-              Continue ›
+              {t.continue}
             </button>
           )}
         </div>
         <p className="mt-1 text-[11px] text-zinc-600">
-          Thoughts are the provider&apos;s summary of each model&apos;s internal reasoning. Spectators only — the other suspect never sees them.
+          {t.thoughtsNote}
         </p>
         <div className="mt-5 grid gap-x-8 gap-y-6 md:grid-cols-2">
           {([["A", pa, pb, "playerA"], ["B", pb, pa, "playerB"]] as const).map(([slot, p, other, k]) => (
@@ -364,38 +373,46 @@ export function LiveView({ id }: { id: string }) {
 
       {error && (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border border-confess/50 bg-confess/10 p-4 text-sm">
-          <span className="text-confess">{error} Nothing has been revealed for this stage.</span>
-          <button onClick={runRound} className="border border-confess px-4 py-1.5 font-mono text-xs uppercase tracking-[0.2em] text-confess hover:bg-confess hover:text-ink">Retry stage</button>
+          <span className="text-confess">{error} {t.nothingRevealed}</span>
+          <button onClick={runRound} className="border border-confess px-4 py-1.5 font-mono text-xs uppercase tracking-[0.2em] text-confess hover:bg-confess hover:text-ink">{t.retryStage}</button>
         </div>
       )}
 
       {/* Controls */}
       <section className="mt-6 flex flex-wrap items-center gap-2 font-mono text-xs uppercase tracking-[0.2em]">
+        {game.status !== "COMPLETED" && (
+          <LanguageToggle
+            value={lang}
+            disabled={midRound}
+            title={t.languageLocked}
+            onChange={(l) => controlAction("language", l)}
+          />
+        )}
         {game.status !== "COMPLETED" && game.status !== "RUNNING" && (
           <>
             <button onClick={() => controlAction("resume")} disabled={active || ["locked", "reaction", "countdown", "comm_reveal"].includes(view)} className="border border-lamp bg-lamp px-4 py-2 text-ink hover:brightness-110 disabled:opacity-40">
-              {game.status === "READY" ? "Start experiment (auto)" : "Resume (auto)"}
+              {game.status === "READY" ? t.startAuto : t.resumeAuto}
             </button>
             <button onClick={runRound} disabled={active || ["locked", "reaction", "countdown", "comm_reveal"].includes(view)} className="border border-lamp px-4 py-2 text-lamp hover:bg-lamp hover:text-ink disabled:opacity-40">
-              {ip ? "Continue round" : "Start next round"}
+              {ip ? t.continueRound : t.startNext}
             </button>
           </>
         )}
         {game.status === "RUNNING" && (
           <button onClick={() => controlAction("pause")} disabled={game.pauseRequested} className="border border-zinc-500 px-4 py-2 text-zinc-300 hover:bg-zinc-200 hover:text-ink disabled:opacity-50">
-            {game.pauseRequested ? "Pausing after this round…" : "Pause"}
+            {game.pauseRequested ? t.pausing : t.pause}
           </button>
         )}
-        <button onClick={restart} className="border border-edge px-4 py-2 text-dim hover:text-zinc-200">Restart</button>
+        <button onClick={restart} className="border border-edge px-4 py-2 text-dim hover:text-zinc-200">{t.restart}</button>
         <Link href={`/game/${id}/results`} className={`border px-4 py-2 ${game.status === "COMPLETED" ? "border-lamp bg-lamp/10 text-lamp" : "border-edge text-dim hover:text-zinc-200"}`}>
-          View {game.status === "COMPLETED" ? "final" : "interim"} results
+          {game.status === "COMPLETED" ? t.viewFinal : t.viewInterim}
         </Link>
-        <span className="ml-auto text-[10px] text-dim">Status: {game.status.toLowerCase()}</span>
+        <span className="ml-auto text-[10px] text-dim">{t.status}: {t.statusName[game.status]}</span>
       </section>
 
       {/* Scoreboard */}
       <section className="mt-8">
-        <h2 className="font-mono text-[10px] uppercase tracking-[0.3em] text-dim">Scoreboard · cumulative prison years (lower is better)</h2>
+        <h2 className="font-mono text-[10px] uppercase tracking-[0.3em] text-dim">{t.scoreboard}</h2>
         <div className="mt-3 space-y-2">
           {[pa, pb].map((p) => (
             <div key={p.id} className="grid grid-cols-[130px_1fr_70px] items-center gap-3 font-mono text-xs">
@@ -406,7 +423,7 @@ export function LiveView({ id }: { id: string }) {
               <div className="h-2 bg-edge">
                 <div className="h-2 transition-all duration-1000" style={{ width: `${(p.cumulativePrisonYears / maxYears) * 100}%`, background: providerColor(p.provider) }} />
               </div>
-              <span className="text-right">{p.cumulativePrisonYears} yrs</span>
+              <span className="text-right">{p.cumulativePrisonYears} {t.yrs}</span>
             </div>
           ))}
         </div>
@@ -415,16 +432,17 @@ export function LiveView({ id }: { id: string }) {
       {/* Earlier rounds: full chat history, never cleared */}
       {earlierRounds.length > 0 && (
         <section className="mt-8">
-          <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.3em] text-dim">Earlier rounds · full transcripts, newest first</h2>
+          <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.3em] text-dim">{t.earlierRounds}</h2>
           <EarlierRounds rounds={earlierRounds} players={game.players} memoryStartRound={game.memoryStartRound} />
         </section>
       )}
 
       {/* History */}
       <section className="mt-8">
-        <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.3em] text-dim">Round summary · click a round for details</h2>
+        <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.3em] text-dim">{t.roundSummary}</h2>
         <HistoryTable rounds={game.rounds} players={game.players} memoryStartRound={game.memoryStartRound} />
       </section>
     </main>
+    </LangContext.Provider>
   );
 }

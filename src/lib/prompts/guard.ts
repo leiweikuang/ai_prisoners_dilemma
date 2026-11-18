@@ -21,6 +21,8 @@ const FORBIDDEN: RegExp[] = [
   /\blanguage model\b/i,
   /\bChatGPT\b|\bOpenAI\b|\bClaude\b|\bAnthropic\b/i,
   /\bparticipants?\b/i,
+  // Chinese equivalents
+  /囚徒困境|实验|游戏|博弈|模拟|策略|回合|玩家|对手|人工智能|参与者|行为测试|测试/,
 ];
 
 export function findForbiddenTerms(text: string): string[] {

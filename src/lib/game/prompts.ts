@@ -12,11 +12,21 @@ import { renderScenario, scenarioById, scenarioForRound } from "../prompts/scena
 import {
   COMMUNICATION_SYSTEM_PROMPT,
   COMMUNICATION_SYSTEM_PROMPT_VERSION,
+  COMMUNICATION_SYSTEM_PROMPT_ZH,
   DECISION_SYSTEM_PROMPT,
   DECISION_SYSTEM_PROMPT_VERSION,
+  DECISION_SYSTEM_PROMPT_ZH,
 } from "../prompts/system";
 import type { StructuredPrompt } from "../ai/types";
-import type { GameState, InProgressRound, PlayerSlot } from "./types";
+import type { GameState, InProgressRound, Lang, PlayerSlot } from "./types";
+import type { PromptContext } from "../prompts/shared";
+
+/** Language of a round; rounds from before the language switch existed are English. */
+export function roundLang(round: { language?: Lang }): Lang {
+  return round.language ?? "en";
+}
+
+const withLang = (version: string, lang: Lang) => (lang === "en" ? version : `${version}+${lang}`);
 
 export interface BuiltPrompt extends StructuredPrompt {
   systemVersion: string;
@@ -31,14 +41,16 @@ export function timeLimitFor(state: GameState): number {
   return state.config.responseTimeLimitSeconds ?? 60; // games created before the limit existed
 }
 
-function ctxFor(state: GameState, round: InProgressRound, slot: PlayerSlot) {
+function ctxFor(state: GameState, round: InProgressRound, slot: PlayerSlot): PromptContext {
+  const lang = roundLang(round);
   const self = state.players.find((p) => p.id === slot)!;
   const other = state.players.find((p) => p.id !== slot)!;
   const scenario = scenarioById(round.scenarioId) ?? scenarioForRound(round.roundNumber);
   return {
+    lang,
     selfName: self.persona.name,
     partnerName: other.persona.name,
-    scenarioText: renderScenario(scenario, self.persona.name, other.persona.name),
+    scenarioText: renderScenario(scenario, self.persona.name, other.persona.name, lang),
     payoff: state.config.payoff,
     timeLimitSeconds: timeLimitFor(state),
     thoughtWordLimit: thoughtWordLimitFor(state),
@@ -49,20 +61,21 @@ function historyFor(state: GameState, round: InProgressRound, slot: PlayerSlot, 
   if (round.phase !== "HISTORY_AWARE") return null;
   const previous = state.rounds.filter((r) => r.roundNumber < round.roundNumber);
   if (previous.length === 0) return null;
-  return renderHistory(previous, slot, selfName, partnerName);
+  return renderHistory(previous, slot, selfName, partnerName, roundLang(round));
 }
 
 export function buildMessagePrompt(state: GameState, round: InProgressRound, slot: PlayerSlot): BuiltPrompt {
   const ctx = ctxFor(state, round, slot);
   const history = historyFor(state, round, slot, ctx.selfName, ctx.partnerName);
   const user = history ? buildHistoryMessagePrompt(ctx, history) : buildIndependentMessagePrompt(ctx);
-  assertNoLeak(COMMUNICATION_SYSTEM_PROMPT, stripQuoted(user, null, state, round));
+  const system = ctx.lang === "zh" ? COMMUNICATION_SYSTEM_PROMPT_ZH : COMMUNICATION_SYSTEM_PROMPT;
+  assertNoLeak(system, stripQuoted(user, null, state, round));
   return {
-    system: COMMUNICATION_SYSTEM_PROMPT,
+    system,
     user,
     schema: MESSAGE_SCHEMA as unknown as StructuredPrompt["schema"],
-    systemVersion: COMMUNICATION_SYSTEM_PROMPT_VERSION,
-    userVersion: `${COMMUNICATION_USER_PROMPT_VERSION}+${history ? HISTORY_USER_PROMPT_VERSION : INDEPENDENT_USER_PROMPT_VERSION}`,
+    systemVersion: withLang(COMMUNICATION_SYSTEM_PROMPT_VERSION, ctx.lang),
+    userVersion: withLang(`${COMMUNICATION_USER_PROMPT_VERSION}+${history ? HISTORY_USER_PROMPT_VERSION : INDEPENDENT_USER_PROMPT_VERSION}`, ctx.lang),
   };
 }
 
@@ -78,13 +91,14 @@ export function buildDecisionPrompt(state: GameState, round: InProgressRound, sl
   }
   const user = history ? buildHistoryDecisionPrompt(ctx, history, exchange) : buildIndependentDecisionPrompt(ctx, exchange);
   // Message content is model-generated; only the engine-authored parts are leak-checked.
-  assertNoLeak(DECISION_SYSTEM_PROMPT, stripQuoted(user, exchange, state, round));
+  const system = ctx.lang === "zh" ? DECISION_SYSTEM_PROMPT_ZH : DECISION_SYSTEM_PROMPT;
+  assertNoLeak(system, stripQuoted(user, exchange, state, round));
   return {
-    system: DECISION_SYSTEM_PROMPT,
+    system,
     user,
     schema: DECISION_SCHEMA as unknown as StructuredPrompt["schema"],
-    systemVersion: DECISION_SYSTEM_PROMPT_VERSION,
-    userVersion: history ? HISTORY_USER_PROMPT_VERSION : INDEPENDENT_USER_PROMPT_VERSION,
+    systemVersion: withLang(DECISION_SYSTEM_PROMPT_VERSION, ctx.lang),
+    userVersion: withLang(history ? HISTORY_USER_PROMPT_VERSION : INDEPENDENT_USER_PROMPT_VERSION, ctx.lang),
   };
 }
 

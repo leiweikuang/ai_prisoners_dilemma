@@ -119,14 +119,14 @@ describe("engine", () => {
 
   it("pauses only between rounds", async () => {
     const g = await mk();
-    await control(g.gameId, "resume");
+    await control(g.gameId, { action: "resume" });
     await advance(g.gameId, { roundNumber: 1, stage: "COMMUNICATION" });
-    let s = await control(g.gameId, "pause");
+    let s = await control(g.gameId, { action: "pause" });
     expect(s.status).toBe("RUNNING");
     expect(s.pauseRequested).toBe(true);
     s = await advance(g.gameId, { roundNumber: 1, stage: "DECISION" });
     expect(s.status).toBe("PAUSED");
-    s = await control(g.gameId, "resume");
+    s = await control(g.gameId, { action: "resume" });
     expect(s.status).toBe("RUNNING");
   });
 });
@@ -166,5 +166,30 @@ describe("response rules", () => {
     await expect(
       createGame({ playerA: { provider: "mock", model: "gpt-4o-search-preview" }, playerB: { provider: "mock", model: "m" } }),
     ).rejects.toMatchObject({ code: "bad_config" });
+  });
+});
+
+describe("language", () => {
+  it("defaults to 5 rounds with history from round 1", async () => {
+    const g = await createGame({ playerA: { provider: "mock", model: "m" }, playerB: { provider: "mock", model: "m" } });
+    expect(g.totalRounds).toBe(5);
+    expect(g.memoryStartRound).toBe(1);
+    expect(g.phase).toBe("HISTORY_AWARE");
+  });
+
+  it("switches language only between rounds, logs every change, and records it per round", async () => {
+    const g = await mk();
+    await advance(g.gameId, { roundNumber: 1, stage: "COMMUNICATION" });
+    await expect(control(g.gameId, { action: "language", language: "zh" })).rejects.toMatchObject({ code: "round_in_progress" });
+    await advance(g.gameId, { roundNumber: 1, stage: "DECISION" });
+    let s = await control(g.gameId, { action: "language", language: "zh" });
+    expect(s.language).toBe("zh");
+    expect(s.configChanges.at(-1)!.description).toMatch(/from en to zh before round 2/);
+    await advance(g.gameId, { roundNumber: 2, stage: "COMMUNICATION" });
+    s = await advance(g.gameId, { roundNumber: 2, stage: "DECISION" });
+    expect(s.rounds.map((r) => r.language)).toEqual(["en", "zh"]);
+    const r2 = s.callLog.filter((c) => c.roundNumber === 2);
+    expect(r2.every((c) => c.systemPromptVersion.endsWith("+zh") && c.systemPrompt.includes("请用中文思考和回答"))).toBe(true);
+    expect(r2.every((c) => c.userPrompt.includes("时间限制") && c.userPrompt.includes("后果有多严重"))).toBe(true);
   });
 });

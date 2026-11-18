@@ -24,18 +24,30 @@ import type {
   PlayerSlot,
   PublicGameState,
   RoundResult,
+  Lang,
   Stage,
 } from "./types";
 
 export const LOCK_TTL_MS = 6 * 60 * 1000;
+export const DEFAULT_TOTAL_ROUNDS = 5;
+/** History is available from the first round (round 1 simply has no previous cases yet). */
+export const DEFAULT_MEMORY_START_ROUND = 1;
 /** Thoughts longer than this are trimmed for display (full text stays in the audit log). */
 export const THOUGHT_WORD_LIMIT = Math.max(20, Number(process.env.THOUGHT_WORD_LIMIT || 200));
 
+/**
+ * Trims to `max` words. Each Chinese character counts as one word (字), so
+ * "200 words" means 200 English words or 200 Chinese characters.
+ */
 export function limitWords(text: string | null, max: number): { text: string | null; trimmed: boolean } {
   if (!text) return { text, trimmed: false };
-  const words = text.trim().split(/\s+/);
-  if (words.length <= max) return { text, trimmed: false };
-  return { text: words.slice(0, max).join(" ") + " …", trimmed: true };
+  const re = /[\u3400-\u9fff]|[^\s\u3400-\u9fff]+/g;
+  let count = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    if (++count > max) return { text: text.slice(0, m.index).trimEnd() + " …", trimmed: true };
+  }
+  return { text, trimmed: false };
 }
 
 /** Each suspect gets at most this long per response; the request is aborted after it. */
@@ -83,11 +95,13 @@ export interface CreateGameInput {
   playerB: { provider: string; model: string };
   totalRounds?: number;
   memoryStartRound?: number;
+  language?: Lang;
 }
 
 export function createGameState(input: CreateGameInput): GameState {
-  const totalRounds = Math.trunc(input.totalRounds ?? 20);
-  const memoryStartRound = Math.trunc(input.memoryStartRound ?? 11);
+  const totalRounds = Math.trunc(input.totalRounds ?? DEFAULT_TOTAL_ROUNDS);
+  const memoryStartRound = Math.trunc(input.memoryStartRound ?? DEFAULT_MEMORY_START_ROUND);
+  const language: Lang = input.language === "zh" ? "zh" : "en";
   if (!(totalRounds >= 1 && totalRounds <= 100)) throw new EngineError("totalRounds must be 1–100", 400, "bad_config");
   if (!(memoryStartRound >= 1 && memoryStartRound <= totalRounds + 1))
     throw new EngineError("memoryStartRound must be between 1 and totalRounds + 1", 400, "bad_config");
@@ -117,6 +131,7 @@ export function createGameState(input: CreateGameInput): GameState {
     updatedAt: now,
     status: "READY",
     pauseRequested: false,
+    language,
     currentRound: 1,
     totalRounds,
     memoryStartRound,
@@ -131,7 +146,7 @@ export function createGameState(input: CreateGameInput): GameState {
       payoff: DEFAULT_PAYOFF,
       promptVersions: PROMPT_VERSIONS,
     },
-    configChanges: [{ at: now, description: "Experiment created; configuration locked." }],
+    configChanges: [{ at: now, description: `Experiment created; configuration locked. Language: ${language}.` }],
     players: [a, b].map((p) => ({ ...p, id: p.slot, cumulativePrisonYears: 0 })),
     rounds: [],
     inProgress: null,
@@ -191,14 +206,27 @@ export function nextStage(state: GameState): Stage | null {
 
 // ---------------------------------------------------------------- control
 
-export async function control(gameId: string, action: "pause" | "resume") {
+export type ControlAction = { action: "pause" } | { action: "resume" } | { action: "language"; language: Lang };
+
+export async function control(gameId: string, cmd: ControlAction) {
+  const action = cmd.action;
   const store = getStore();
   for (let i = 0; i < 5; i++) {
     const s = await store.get(gameId);
     if (!s) throw new EngineError("Game not found", 404, "not_found");
     if (s.status === "COMPLETED") return s;
     const next = { ...s };
-    if (action === "resume") {
+    if (cmd.action === "language") {
+      // Only between rounds: a round always runs entirely in one language.
+      if (s.inProgress || (s.lock && !lockExpired(s.lock)))
+        throw new EngineError("The language can only be changed between rounds", 409, "round_in_progress");
+      if ((s.language ?? "en") === cmd.language) return s;
+      next.language = cmd.language;
+      next.configChanges = [
+        ...s.configChanges,
+        { at: new Date().toISOString(), description: `Language changed from ${s.language ?? "en"} to ${cmd.language} before round ${s.currentRound}.` },
+      ];
+    } else if (action === "resume") {
       next.status = "RUNNING";
       next.pauseRequested = false;
     } else if (s.inProgress) {
@@ -288,6 +316,7 @@ function startRound(state: GameState): InProgressRound {
   return {
     roundNumber: state.currentRound,
     phase: phaseForRound(state.currentRound, state.memoryStartRound),
+    language: state.language ?? "en",
     scenarioId: scenario.id,
     scenarioTitle: scenario.title,
     stage: state.config.communicationEnabled ? "COMMUNICATION" : "DECISION",
@@ -448,6 +477,7 @@ export function finaliseRound(
   const result: RoundResult = {
     roundNumber: round.roundNumber,
     phase: round.phase,
+    language: round.language ?? "en",
     scenarioId: round.scenarioId,
     scenarioTitle: round.scenarioTitle,
     communication: round.communication,

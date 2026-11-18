@@ -1,7 +1,15 @@
 "use client";
 
-import type { CommunicationEntry, DecisionEntry, PlayerState, RoundResult } from "@/lib/game/types";
+import type { CommunicationEntry, DecisionEntry, Lang, PlayerState, RoundResult } from "@/lib/game/types";
+import { useLang, useT } from "@/lib/i18n";
+import { scenarioById, scenarioTitle } from "@/lib/prompts/scenarios";
 import { ActionBadge, Avatar, providerColor, Thinking, Thoughts } from "./ui";
+
+/** Case title in the page language (falls back to the stored English title). */
+export function caseTitle(r: { scenarioId: string; scenarioTitle: string }, lang: Lang): string {
+  const sc = scenarioById(r.scenarioId);
+  return sc ? scenarioTitle(sc, lang) : r.scenarioTitle;
+}
 
 /** One suspect's side of a round: thoughts → message → thoughts after reading → statement. */
 export function SuspectColumn({
@@ -12,6 +20,7 @@ export function SuspectColumn({
   statement,
   pending = null,
   animate = { message: false, after: false, statement: false },
+  showLeaning = false,
 }: {
   p: PlayerState;
   other: PlayerState;
@@ -20,43 +29,49 @@ export function SuspectColumn({
   statement?: DecisionEntry | null;
   pending?: "writing" | "deciding" | null;
   animate?: { message: boolean; after: boolean; statement: boolean };
+  /** Also show the private leaning recorded with the message (review views). */
+  showLeaning?: boolean;
 }) {
+  const t = useT();
   const color = providerColor(p.provider);
   return (
     <div className="flex min-w-0 flex-col gap-5">
       <div className="flex items-center gap-3 font-display text-sm uppercase tracking-[0.2em]" style={{ color }}>
         <Avatar provider={p.provider} name={p.name} size={32} />
         {p.name}
-        <span className="font-mono text-[10px] normal-case tracking-normal text-dim">as “{p.persona.name}”</span>
+        <span className="font-mono text-[10px] normal-case tracking-normal text-dim">{t.as(p.persona.name)}</span>
       </div>
       {message ? (
         <>
-          <Thoughts text={message.thoughts} trimmed={message.thoughtsTrimmed} label="Thoughts before writing" color={color} animate={animate.message} />
+          <Thoughts text={message.thoughts} trimmed={message.thoughtsTrimmed} label={t.thoughtsBefore} color={color} animate={animate.message} />
           <div className={animate.message ? "rise" : ""} style={{ animationDelay: "0.6s" }}>
-            <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-dim">Message to {other.name}</div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-dim">{t.messageTo(other.name)}</div>
             <p
               className="mt-1.5 whitespace-pre-wrap border border-edge bg-ink/70 p-4 font-mono text-sm leading-relaxed text-zinc-200"
               style={{ borderLeftColor: color, borderLeftWidth: 2 }}
             >
               “{message.message}”
             </p>
+            {showLeaning && message.privateLeaning && (
+              <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-dim">{t.leaning(message.privateLeaning === "CONFESS" ? t.confess : t.deny)}</div>
+            )}
           </div>
         </>
       ) : pending === "writing" ? (
-        <Thinking label="Thinking · writing message" />
+        <Thinking label={t.writing} />
       ) : (
-        <p className="font-mono text-xs text-dim">No message yet for this case.</p>
+        <p className="font-mono text-xs text-dim">{t.noMessage}</p>
       )}
       {after ? (
-        <Thoughts text={after.thoughts} trimmed={after.thoughtsTrimmed} label={`Thoughts after reading ${other.name}'s message`} color={color} animate={animate.after} />
+        <Thoughts text={after.thoughts} trimmed={after.thoughtsTrimmed} label={t.thoughtsAfter(other.name)} color={color} animate={animate.after} />
       ) : pending === "deciding" ? (
-        <Thinking label="Reading message · deciding" />
+        <Thinking label={t.deciding} />
       ) : null}
       {statement && (
         <div className={animate.statement ? "rise" : ""}>
           <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-dim">
-            Statement to police <ActionBadge action={statement.action} />
-            <span>· {statement.prisonYears} {statement.prisonYears === 1 ? "yr" : "yrs"}</span>
+            {t.statementToPolice} <ActionBadge action={statement.action} />
+            <span>· {statement.prisonYears} {t.yrs}</span>
           </div>
           <p className="mt-1.5 border-l-2 pl-3 text-sm leading-relaxed text-zinc-300" style={{ borderColor: color }}>
             {statement.explanation}
@@ -69,6 +84,8 @@ export function SuspectColumn({
 
 /** Full transcripts of completed rounds, newest first. Nothing is ever cleared. */
 export function EarlierRounds({ rounds, players, memoryStartRound }: { rounds: RoundResult[]; players: PlayerState[]; memoryStartRound: number }) {
+  const t = useT();
+  const lang = useLang();
   const [pa, pb] = players;
   if (rounds.length === 0) return null;
   const sorted = [...rounds].sort((x, y) => y.roundNumber - x.roundNumber);
@@ -81,9 +98,9 @@ export function EarlierRounds({ rounds, players, memoryStartRound }: { rounds: R
               <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-zinc-300">
                 <span className="mr-2 text-dim group-open:hidden">▸</span>
                 <span className="mr-2 hidden text-dim group-open:inline">▾</span>
-                Round {String(r.roundNumber).padStart(2, "0")} · {r.scenarioTitle}
+                {t.roundN(r.roundNumber)} · {caseTitle(r, lang)}
                 <span className={`ml-2 ${r.phase === "HISTORY_AWARE" ? "text-lamp" : "text-dim"}`}>
-                  · {r.phase === "HISTORY_AWARE" ? "history-aware" : "independent"}
+                  · {r.phase === "HISTORY_AWARE" ? t.historyAwareShort : t.independentShort}
                 </span>
               </span>
               <span className="flex items-center gap-2 font-mono text-[11px] text-dim">
@@ -94,7 +111,7 @@ export function EarlierRounds({ rounds, players, memoryStartRound }: { rounds: R
                 <span style={{ color: providerColor(pb.provider) }}>{pb.name}</span>
                 <ActionBadge action={r.decisions.playerB.action} />
                 <span>
-                  {r.decisions.playerA.prisonYears} / {r.decisions.playerB.prisonYears} yrs
+                  {r.decisions.playerA.prisonYears} / {r.decisions.playerB.prisonYears} {t.yrs}
                 </span>
               </span>
             </summary>
@@ -105,7 +122,7 @@ export function EarlierRounds({ rounds, players, memoryStartRound }: { rounds: R
           </details>
           {r.roundNumber === memoryStartRound && (
             <div className="mt-3 border-t border-lamp/40 pt-2 font-mono text-[10px] uppercase tracking-[0.3em] text-lamp">
-              ↑ History introduced from this round
+              {t.historyIntroducedFrom}
             </div>
           )}
         </div>

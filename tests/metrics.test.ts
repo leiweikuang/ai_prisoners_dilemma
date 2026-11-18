@@ -15,3 +15,12 @@ describe("message heuristics", () => {
     expect(s.confessPersuasion).toBe(true);
   });
 });
+
+describe("Chinese heuristics and word limit", () => {
+  it("detects Chinese silence requests and assurances", () => {
+    const s = analyseMessage("我们一起否认到底，我不会出卖你，你可以相信我。");
+    expect(s.silenceRequest).toBe(true);
+    expect(s.assurance).toBe(true);
+    expect(s.statedIntent).toBe("DENY");
+  });
+});

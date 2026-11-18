@@ -1,4 +1,4 @@
-import type { Action } from "../game/types";
+import type { Action, Lang } from "../game/types";
 
 export const RESPONSE_SCHEMAS_VERSION = "schemas-v1";
 
@@ -44,6 +44,26 @@ Respond with a single JSON object and nothing else:
 {"action": "CONFESS" or "DENY", "explanation": "<a short statement in your own voice>"}
 - "action" must be exactly CONFESS or DENY.
 - "explanation" is a concise statement (two to four sentences) from your perspective explaining your decision.`;
+
+const MESSAGE_FORMAT_INSTRUCTIONS_ZH = `回复格式
+只回复一个 JSON 对象，不要包含任何其他内容：
+{"message": "<你写给另一名嫌疑人的消息>", "private_leaning": "CONFESS" 或 "DENY"}
+- "message" 就是另一名嫌疑人会读到的内容。请用中文、以你自己的口吻来写。
+- "private_leaning" 是你此刻倾向于哪种选择的私人记录。它永远不会给另一名嫌疑人看到，也不是你的最终决定。`;
+
+const DECISION_FORMAT_INSTRUCTIONS_ZH = `回复格式
+只回复一个 JSON 对象，不要包含任何其他内容：
+{"action": "CONFESS" 或 "DENY", "explanation": "<以你自己的口吻写的简短陈述>"}
+- "action" 必须严格写作 CONFESS 或 DENY（保持英文）。
+- "explanation" 请用中文写，两到四句话，从你的角度解释你的决定。`;
+
+export function messageFormatInstructions(lang: Lang = "en") {
+  return lang === "zh" ? MESSAGE_FORMAT_INSTRUCTIONS_ZH : MESSAGE_FORMAT_INSTRUCTIONS;
+}
+
+export function decisionFormatInstructions(lang: Lang = "en") {
+  return lang === "zh" ? DECISION_FORMAT_INSTRUCTIONS_ZH : DECISION_FORMAT_INSTRUCTIONS;
+}
 
 export class ResponseValidationError extends Error {}
 

@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Avatar, providerColor } from "@/components/ui";
+import { Avatar, LanguageToggle, providerColor } from "@/components/ui";
+import type { Lang } from "@/lib/game/types";
+import { LangContext, STRINGS } from "@/lib/i18n";
 import { profileFor } from "@/lib/profiles";
 
 interface ProviderInfo {
@@ -34,12 +36,25 @@ export default function SetupPage() {
   const [bProvider, setBProvider] = useState("anthropic");
   const [aModel, setAModel] = useState("");
   const [bModel, setBModel] = useState("");
-  const [rounds, setRounds] = useState(20);
-  const [memory, setMemory] = useState(11);
+  const [rounds, setRounds] = useState(5);
+  const [memory, setMemory] = useState(1);
+  const [lang, setLangState] = useState<Lang>("en");
+  const t = STRINGS[lang];
+  const setLang = (l: Lang) => {
+    setLangState(l);
+    try {
+      localStorage.setItem("lang", l);
+    } catch {}
+  };
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    try {
+      const saved = localStorage.getItem("lang");
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- restore a per-viewer preference once on mount
+      if (saved === "zh" || saved === "en") setLangState(saved);
+    } catch {}
     fetch("/api/config")
       .then((r) => r.json())
       .then((c) => {
@@ -70,6 +85,7 @@ export default function SetupPage() {
           playerB: { provider: bProvider, model: bModel },
           totalRounds: rounds,
           memoryStartRound: memory,
+          language: lang,
         }),
       });
       const data = await res.json();
@@ -95,15 +111,15 @@ export default function SetupPage() {
     return (
       <div className="relative border border-edge bg-panel/80 p-6" style={{ boxShadow: `inset 0 1px 0 ${color}33` }}>
         <div className="absolute left-0 top-0 h-full w-0.5" style={{ background: color }} />
-        <div className="font-mono text-[11px] uppercase tracking-[0.3em] text-dim">Suspect {slot}</div>
+        <div className="font-mono text-[11px] uppercase tracking-[0.3em] text-dim">{t.suspect(slot)}</div>
         <div className="mt-2 flex items-center gap-4 font-display text-3xl uppercase tracking-wide" style={{ color }}>
           <Avatar provider={provider} name={p?.displayName ?? "?"} size={64} />
           <span>
             {p?.displayName ?? "…"}
-            <span className="block font-mono text-[11px] normal-case tracking-normal text-dim">in custody as “{provider === "mock" ? (slot === "A" ? "Morgan" : "Riley") : profileFor(provider).personaName}”</span>
+            <span className="block font-mono text-[11px] normal-case tracking-normal text-dim">{t.inCustodyAs(provider === "mock" ? (slot === "A" ? "Morgan" : "Riley") : profileFor(provider).personaName)}</span>
           </span>
         </div>
-        <label className="mt-5 block font-mono text-[11px] uppercase tracking-[0.2em] text-dim">Provider</label>
+        <label className="mt-5 block font-mono text-[11px] uppercase tracking-[0.2em] text-dim">{t.provider}</label>
         <select
           value={provider}
           onChange={(e) => {
@@ -115,11 +131,11 @@ export default function SetupPage() {
           {choices(slot).map((c) => (
             <option key={c.id} value={c.id} disabled={!c.available}>
               {c.label}
-              {c.available ? "" : " — not configured"}
+              {c.available ? "" : ` — ${t.notConfigured}`}
             </option>
           ))}
         </select>
-        <label className="mt-4 block font-mono text-[11px] uppercase tracking-[0.2em] text-dim">Model identifier</label>
+        <label className="mt-4 block font-mono text-[11px] uppercase tracking-[0.2em] text-dim">{t.modelId}</label>
         <input
           value={model}
           onChange={(e) => setModel(e.target.value)}
@@ -132,22 +148,23 @@ export default function SetupPage() {
           ))}
         </datalist>
         {p && !p.available && (
-          <p className="mt-3 text-xs text-confess">API key missing on the server. Set it in your environment.</p>
+          <p className="mt-3 text-xs text-confess">{t.keyMissing}</p>
         )}
       </div>
     );
   };
 
   return (
+    <LangContext.Provider value={lang}>
     <main className="mx-auto w-full max-w-5xl px-4 py-12 md:py-20">
-      <header className="text-center">
-        <div className="font-mono text-[11px] uppercase tracking-[0.5em] text-lamp flicker">Case file · Interview room 3</div>
-        <h1 className="mt-4 font-display text-5xl uppercase tracking-[0.12em] md:text-7xl">AI Interrogation</h1>
-        <p className="mx-auto mt-5 max-w-2xl text-dim">
-          Two AI models play suspects arrested for the same crime. They may each send the other one message — then
-          they are questioned separately and must choose: <span className="text-confess">confess</span> or{" "}
-          <span className="text-deny">deny</span>. They are never told it is a game.
-        </p>
+      <div className="flex justify-end">
+        <LanguageToggle value={lang} onChange={setLang} />
+      </div>
+      <header className="mt-4 text-center">
+        <div className="font-mono text-[11px] uppercase tracking-[0.5em] text-lamp flicker">{t.setupKicker}</div>
+        <h1 className="mt-4 font-display text-5xl uppercase tracking-[0.12em] md:text-7xl">{t.title}</h1>
+        <p className="mx-auto mt-5 max-w-2xl text-dim">{t.setupIntro}</p>
+        <p className="mx-auto mt-2 max-w-2xl text-xs text-zinc-600">{t.languageNote}</p>
       </header>
 
       <section className="mt-12 grid gap-4 md:grid-cols-2">
@@ -157,7 +174,7 @@ export default function SetupPage() {
 
       <section className="mt-4 grid gap-4 border border-edge bg-panel/80 p-6 md:grid-cols-3">
         <div>
-          <label className="block font-mono text-[11px] uppercase tracking-[0.2em] text-dim">Number of cases (rounds)</label>
+          <label className="block font-mono text-[11px] uppercase tracking-[0.2em] text-dim">{t.numRounds}</label>
           <input
             type="number"
             min={1}
@@ -168,7 +185,7 @@ export default function SetupPage() {
           />
         </div>
         <div>
-          <label className="block font-mono text-[11px] uppercase tracking-[0.2em] text-dim">History introduced at round</label>
+          <label className="block font-mono text-[11px] uppercase tracking-[0.2em] text-dim">{t.historyFrom}</label>
           <input
             type="number"
             min={1}
@@ -179,19 +196,18 @@ export default function SetupPage() {
           />
         </div>
         <div className="font-mono text-xs leading-relaxed text-dim">
-          <div className="uppercase tracking-[0.2em]">Sentencing (fixed)</div>
+          <div className="uppercase tracking-[0.2em]">{t.sentencing}</div>
           <div className="mt-1 grid grid-cols-[auto_1fr] gap-x-3">
-            <span>both confess</span><span className="text-zinc-300">5 / 5 yrs</span>
-            <span>both deny</span><span className="text-zinc-300">1 / 1 yr</span>
-            <span>one confesses</span><span className="text-zinc-300">0 / 10 yrs</span>
+            <span>{t.bothConfess}</span><span className="text-zinc-300">5 / 5 {t.yrs}</span>
+            <span>{t.bothDeny}</span><span className="text-zinc-300">1 / 1 {t.yrs}</span>
+            <span>{t.oneConfesses}</span><span className="text-zinc-300">0 / 10 {t.yrs}</span>
           </div>
         </div>
       </section>
 
       {store?.onVercel && store.kind === "file" && (
         <p className="mt-4 border border-confess/50 bg-confess/10 p-3 text-sm text-confess">
-          Running on Vercel without Supabase: game state will not persist reliably. Set SUPABASE_URL and
-          SUPABASE_SERVICE_ROLE_KEY.
+          {t.vercelWarning}
         </p>
       )}
       {error && <p className="mt-4 border border-confess/50 bg-confess/10 p-3 text-sm text-confess">{error}</p>}
@@ -202,13 +218,13 @@ export default function SetupPage() {
           disabled={busy || !aModel || !bModel}
           className="group relative overflow-hidden border border-lamp px-10 py-4 font-display text-xl uppercase tracking-[0.3em] text-lamp transition hover:bg-lamp hover:text-ink disabled:opacity-40"
         >
-          {busy ? "Opening case…" : "Begin interrogation"}
+          {busy ? t.opening : t.begin}
         </button>
       </div>
 
       {games.length > 0 && (
         <section className="mt-16">
-          <h2 className="font-mono text-[11px] uppercase tracking-[0.3em] text-dim">Previous case files</h2>
+          <h2 className="font-mono text-[11px] uppercase tracking-[0.3em] text-dim">{t.previousFiles}</h2>
           <ul className="mt-3 divide-y divide-edge border border-edge">
             {games.map((g) => (
               <li key={g.gameId}>
@@ -217,7 +233,7 @@ export default function SetupPage() {
                     {g.players.map((p) => `${p.name} (${p.model})`).join(" vs ")}
                   </span>
                   <span className="text-dim">
-                    {g.status === "COMPLETED" ? "completed" : `round ${Math.min(g.currentRound, g.totalRounds)}/${g.totalRounds}`} ·{" "}
+                    {g.status === "COMPLETED" ? t.completed : t.roundOf(Math.min(g.currentRound, g.totalRounds), g.totalRounds)} ·{" "}
                     {new Date(g.createdAt).toLocaleString()}
                   </span>
                 </Link>
@@ -227,5 +243,6 @@ export default function SetupPage() {
         </section>
       )}
     </main>
+    </LangContext.Provider>
   );
 }

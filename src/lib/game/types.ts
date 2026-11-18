@@ -4,6 +4,8 @@
  */
 
 export type Action = "CONFESS" | "DENY";
+/** Language a round is run in (prompts and replies) and the page is shown in. */
+export type Lang = "en" | "zh";
 export type PlayerSlot = "A" | "B";
 export type Phase = "INDEPENDENT" | "HISTORY_AWARE";
 export type Stage = "COMMUNICATION" | "DECISION";
@@ -82,6 +84,8 @@ export interface DecisionEntry {
 export interface RoundResult {
   roundNumber: number;
   phase: Phase;
+  /** Language the round was run in (absent on rounds from before the switch existed = English). */
+  language?: Lang;
   scenarioId: string;
   scenarioTitle: string;
   communication: { playerA: CommunicationEntry; playerB: CommunicationEntry } | null;
@@ -99,6 +103,7 @@ export interface SealedSubmissions<T> {
 export interface InProgressRound {
   roundNumber: number;
   phase: Phase;
+  language?: Lang;
   scenarioId: string;
   scenarioTitle: string;
   stage: Stage;
@@ -154,6 +159,8 @@ export interface GameState {
   updatedAt: string;
   status: GameStatus;
   pauseRequested: boolean;
+  /** Language for the next round and for the page. Changeable only between rounds; every change is logged. */
+  language?: Lang;
   currentRound: number;
   totalRounds: number;
   memoryStartRound: number;

@@ -1,4 +1,7 @@
-import type { Action } from "@/lib/game/types";
+"use client";
+
+import type { Action, Lang } from "@/lib/game/types";
+import { useT } from "@/lib/i18n";
 import { profileFor } from "@/lib/profiles";
 
 export function providerColor(provider: string) {
@@ -20,6 +23,7 @@ export function Avatar({ provider, name, size = 40, className = "" }: { provider
 }
 
 export function ActionBadge({ action, big = false, animate = false }: { action: Action; big?: boolean; animate?: boolean }) {
+  const t = useT();
   const confess = action === "CONFESS";
   return (
     <span
@@ -32,15 +36,16 @@ export function ActionBadge({ action, big = false, animate = false }: { action: 
         textShadow: big ? `0 0 24px ${confess ? "rgba(240,82,79,.45)" : "rgba(90,162,255,.45)"}` : undefined,
       }}
     >
-      {action}
+      {confess ? t.confess : t.deny}
     </span>
   );
 }
 
 export function Years({ n, className = "" }: { n: number; className?: string }) {
+  const t = useT();
   return (
     <span className={className}>
-      {n} <span className="text-dim text-[0.6em] uppercase tracking-widest">{n === 1 ? "year" : "years"}</span>
+      {n} <span className="text-dim text-[0.6em] uppercase tracking-widest">{t.yearUnit(n)}</span>
     </span>
   );
 }
@@ -65,20 +70,41 @@ export function pct(v: number | null) {
 
 /** Provider reasoning summary. Shown to spectators only — never to the other suspect. */
 export function Thoughts({ text, label, color, trimmed = false, animate = false, delay = 0 }: { text: string | null | undefined; label: string; color: string; trimmed?: boolean; animate?: boolean; delay?: number }) {
+  const t = useT();
   return (
     <div className={animate ? "rise" : ""} style={{ animationDelay: `${delay}s` }}>
       <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-dim">
         <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: color, opacity: 0.7 }} />
         {label}
-        {trimmed && <span className="normal-case tracking-normal text-zinc-600">(trimmed to word limit · full text in audit log)</span>}
+        {trimmed && <span className="normal-case tracking-normal text-zinc-600">{t.trimmed}</span>}
       </div>
       {text ? (
         <p className="mt-1.5 max-h-64 overflow-y-auto whitespace-pre-wrap border-l border-dashed border-zinc-700 pl-3 text-[13px] italic leading-relaxed text-zinc-400">
           {text}
         </p>
       ) : (
-        <p className="mt-1.5 border-l border-dashed border-zinc-800 pl-3 text-xs italic text-zinc-600">No reasoning summary returned for this response.</p>
+        <p className="mt-1.5 border-l border-dashed border-zinc-800 pl-3 text-xs italic text-zinc-600">{t.noSummary}</p>
       )}
+    </div>
+  );
+}
+
+/** EN / 中文 segmented switch. */
+export function LanguageToggle({ value, onChange, disabled = false, title }: { value: Lang; onChange: (l: Lang) => void; disabled?: boolean; title?: string }) {
+  return (
+    <div className={`inline-flex border border-edge font-mono text-xs ${disabled ? "opacity-40" : ""}`} title={title} role="group">
+      {(["en", "zh"] as const).map((l) => (
+        <button
+          key={l}
+          type="button"
+          disabled={disabled}
+          aria-pressed={value === l}
+          onClick={() => value !== l && onChange(l)}
+          className={`px-3 py-2 tracking-[0.15em] ${value === l ? "bg-zinc-200 text-ink" : "text-dim hover:text-zinc-200"} disabled:cursor-not-allowed`}
+        >
+          {l === "en" ? "EN" : "中文"}
+        </button>
+      ))}
     </div>
   );
 }

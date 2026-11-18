@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import type { PlayerState, RoundResult } from "@/lib/game/types";
+import { useT } from "@/lib/i18n";
 import { providerColor } from "./ui";
 
 /** Cumulative prison years per round; dashed rule marks where history is introduced. */
 export function CumulativeChart({ rounds, players, memoryStartRound }: { rounds: RoundResult[]; players: PlayerState[]; memoryStartRound: number }) {
   const [hover, setHover] = useState<number | null>(null);
+  const t = useT();
   const W = 720, H = 300, L = 44, R = 96, T = 16, B = 34;
   const n = rounds.length;
   if (n === 0) return <p className="font-mono text-xs text-dim">No data yet.</p>;
@@ -42,7 +44,7 @@ export function CumulativeChart({ rounds, players, memoryStartRound }: { rounds:
           </span>
         ))}
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Cumulative prison years by round">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={t.chartLabel}>
         {ticks.map((t) => (
           <g key={t}>
             <line x1={L} x2={W - R} y1={y(t)} y2={y(t)} stroke="#1c2029" strokeWidth={1} />
@@ -55,7 +57,7 @@ export function CumulativeChart({ rounds, players, memoryStartRound }: { rounds:
         {memIdx > 0 && (
           <g>
             <line x1={(x(memIdx) + x(memIdx - 1)) / 2} x2={(x(memIdx) + x(memIdx - 1)) / 2} y1={T} y2={H - B} stroke="#f2b84b" strokeOpacity={0.6} strokeDasharray="4 4" />
-            <text x={(x(memIdx) + x(memIdx - 1)) / 2 + 6} y={T + 10} fontSize={10} fill="#f2b84b" fontFamily="var(--font-plex-mono)">HISTORY →</text>
+            <text x={(x(memIdx) + x(memIdx - 1)) / 2 + 6} y={T + 10} fontSize={10} fill="#f2b84b" fontFamily="var(--font-plex-mono)">{t.historyArrow}</text>
           </g>
         )}
         {hover !== null && <line x1={x(hover)} x2={x(hover)} y1={T} y2={H - B} stroke="#7b8494" strokeOpacity={0.5} />}
@@ -74,11 +76,11 @@ export function CumulativeChart({ rounds, players, memoryStartRound }: { rounds:
       </svg>
       {hover !== null && (
         <div className="pointer-events-none absolute top-8 border border-edge bg-ink/95 px-3 py-2 font-mono text-[11px]" style={{ left: `${Math.min((x(hover) / W) * 100, 70)}%` }}>
-          <div className="text-dim">Round {rounds[hover].roundNumber}</div>
+          <div className="text-dim">{t.roundN(rounds[hover].roundNumber)}</div>
           {series.map((s) => (
             <div key={s.k} className="flex items-center gap-2 text-zinc-200">
               <span className="inline-block h-2 w-2" style={{ background: s.color }} />
-              {s.p.name}: {rounds[hover].cumulativeAfter[s.k]} yrs ({rounds[hover].decisions[s.k].action.toLowerCase()})
+              {s.p.name}: {rounds[hover].cumulativeAfter[s.k]} {t.yrs} ({rounds[hover].decisions[s.k].action === "CONFESS" ? t.confessShort : t.denyShort})
             </div>
           ))}
         </div>
