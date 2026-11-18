@@ -3,7 +3,6 @@
  * previous cases neutrally: no interpretation, summary or suggested approach.
  */
 import type { Lang, PlayerSlot, RoundResult } from "../game/types";
-import { decisionFormatInstructions, messageFormatInstructions } from "./schemas";
 import { scenarioById, scenarioTitle } from "./scenarios";
 import {
   caseBlock,
@@ -16,7 +15,7 @@ import {
   type PromptContext,
 } from "./shared";
 
-export const HISTORY_USER_PROMPT_VERSION = "history-user-v4";
+export const HISTORY_USER_PROMPT_VERSION = "history-user-v5";
 
 function yearsShort(n: number) {
   return n === 1 ? "1 year" : `${n} years`;
@@ -94,7 +93,6 @@ export function buildHistoryMessagePrompt(ctx: PromptContext, history: string): 
     optionsBlock(ctx),
     yourMessageBlock(ctx),
     timeLimitBlock(ctx),
-    messageFormatInstructions(ctx.lang),
   ].join("\n\n");
 }
 
@@ -110,6 +108,5 @@ export function buildHistoryDecisionPrompt(
     optionsBlock(ctx),
     exchange ? exchangedMessagesBlock(ctx, exchange.own, exchange.partner) : noMessageDecisionNote(ctx),
     timeLimitBlock(ctx),
-    decisionFormatInstructions(ctx.lang),
   ].join("\n\n");
 }

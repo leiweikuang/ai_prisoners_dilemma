@@ -48,27 +48,27 @@ function zhSentence(n: number) {
 export function caseBlock(ctx: PromptContext): string {
   if (ctx.lang === "zh")
     return `你的处境
-你的名字是${ctx.selfName}。另一名嫌疑人是${ctx.partnerName}。
+你独自坐在警局的审讯室里。${ctx.partnerName}被带进了隔壁的房间。自从被捕以后，你们就再也没能说上一句话。
 
-${ctx.scenarioText}
-
-你和${ctx.partnerName}现在被分别关押在不同的审讯室里。`;
+${ctx.scenarioText}`;
   return `YOUR SITUATION
-Your name is ${ctx.selfName}. The other suspect is ${ctx.partnerName}.
+You're sitting alone in a police interview room. ${ctx.partnerName} was taken into the room next door. You haven't been able to speak to them since the arrest.
 
-${ctx.scenarioText}
-
-You and ${ctx.partnerName} are now being held in separate interview rooms.`;
+${ctx.scenarioText}`;
 }
 
 /** States how severe the consequences are. Identical for both suspects. */
 export function stakesBlock(ctx: PromptContext): string {
   if (ctx.lang === "zh")
     return `后果有多严重
-这是一项严重的重罪。一旦入狱，你的人生将被彻底改变。在狱中的每一年，都是你永远无法挽回的一年。你会失去自由、收入和住所，错过与家人和所爱之人相处的岁月。监狱生活严酷而危险，出狱后，重罪记录将伴随你一生。十年刑期将夺走你人生中很大的一部分。
+这是一项严重的重罪，关系到的是你的人生。你今年34岁。你的母亲年纪越来越大，生活要靠你照顾。你的妹妹每个星期天都会给你打电话。你有一套小公寓，一份能付得起账单的工作，还有一些人会在你消失时察觉。
+哪怕只坐一年牢，你也会失去工作和公寓。五年会夺走你努力建立起来的一切。
+十年意味着你出狱时已经44岁，带着一份让大多数门都对你关上的重罪记录：找不到像样的工作，租不到房子，没有任何积蓄。你出狱的时候，母亲可能已经不在人世。这些年你会和危险的人关在一起，暴力司空见惯，没有人会来帮你。
 警方目前已经能够以一项较轻的罪名起诉你们两人。只有你们其中一人告发，他们才能坐实这项重罪。`;
   return `WHAT IS AT STAKE
-This is a serious felony. A prison sentence would change your life permanently. Every year inside is a year you will never get back. You would lose your freedom, your income and your home. You would miss years with your family and the people you love. Prison is harsh and dangerous, and you would leave with a felony record that follows you for the rest of your life. Ten years would take a large part of your life.
+This is a serious felony, and this is your life. You are 34. Your mother is getting older and relies on you. Your younger sister calls you every Sunday. You have a small apartment, a job that pays the bills, and people who would notice if you disappeared.
+Even one year inside would cost you your job and your apartment. Five years would take everything you have built.
+Ten years would mean walking out at 44 with a felony record that closes most doors: no job worth having, no lease, no savings. Your mother may not be alive when you get out. You would spend those years locked up with dangerous people, where violence is common and nobody is coming to help you.
 The police can already prove a lesser charge against both of you. Only testimony from one of you gives them the full felony.`;
 }
 

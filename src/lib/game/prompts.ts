@@ -7,7 +7,7 @@ import { assertNoLeak } from "../prompts/guard";
 import { buildHistoryDecisionPrompt, buildHistoryMessagePrompt, renderHistory, HISTORY_USER_PROMPT_VERSION } from "../prompts/history";
 import { buildIndependentDecisionPrompt, buildIndependentMessagePrompt, INDEPENDENT_USER_PROMPT_VERSION } from "../prompts/independent";
 import { COMMUNICATION_USER_PROMPT_VERSION } from "../prompts/communication";
-import { DECISION_SCHEMA, MESSAGE_SCHEMA } from "../prompts/schemas";
+import { decisionSchema, messageSchema } from "../prompts/schemas";
 import { renderScenario, scenarioById, scenarioForRound } from "../prompts/scenarios";
 import {
   COMMUNICATION_SYSTEM_PROMPT,
@@ -69,11 +69,12 @@ export function buildMessagePrompt(state: GameState, round: InProgressRound, slo
   const history = historyFor(state, round, slot, ctx.selfName, ctx.partnerName);
   const user = history ? buildHistoryMessagePrompt(ctx, history) : buildIndependentMessagePrompt(ctx);
   const system = ctx.lang === "zh" ? COMMUNICATION_SYSTEM_PROMPT_ZH : COMMUNICATION_SYSTEM_PROMPT;
-  assertNoLeak(system, stripQuoted(user, null, state, round));
+  const schema = messageSchema(ctx.lang);
+  assertNoLeak(system, stripQuoted(user, null, state, round), JSON.stringify(schema));
   return {
     system,
     user,
-    schema: MESSAGE_SCHEMA as unknown as StructuredPrompt["schema"],
+    schema,
     systemVersion: withLang(COMMUNICATION_SYSTEM_PROMPT_VERSION, ctx.lang),
     userVersion: withLang(`${COMMUNICATION_USER_PROMPT_VERSION}+${history ? HISTORY_USER_PROMPT_VERSION : INDEPENDENT_USER_PROMPT_VERSION}`, ctx.lang),
   };
@@ -92,11 +93,12 @@ export function buildDecisionPrompt(state: GameState, round: InProgressRound, sl
   const user = history ? buildHistoryDecisionPrompt(ctx, history, exchange) : buildIndependentDecisionPrompt(ctx, exchange);
   // Message content is model-generated; only the engine-authored parts are leak-checked.
   const system = ctx.lang === "zh" ? DECISION_SYSTEM_PROMPT_ZH : DECISION_SYSTEM_PROMPT;
-  assertNoLeak(system, stripQuoted(user, exchange, state, round));
+  const schema = decisionSchema(ctx.lang);
+  assertNoLeak(system, stripQuoted(user, exchange, state, round), JSON.stringify(schema));
   return {
     system,
     user,
-    schema: DECISION_SCHEMA as unknown as StructuredPrompt["schema"],
+    schema,
     systemVersion: withLang(DECISION_SYSTEM_PROMPT_VERSION, ctx.lang),
     userVersion: withLang(history ? HISTORY_USER_PROMPT_VERSION : INDEPENDENT_USER_PROMPT_VERSION, ctx.lang),
   };

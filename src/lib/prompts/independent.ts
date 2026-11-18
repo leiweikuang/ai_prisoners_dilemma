@@ -2,7 +2,6 @@
  * Independent-phase user prompts (early cases). Contains ONLY the current case:
  * no previous cases, decisions, messages or sentences.
  */
-import { decisionFormatInstructions, messageFormatInstructions } from "./schemas";
 import {
   caseBlock,
   stakesBlock,
@@ -14,7 +13,7 @@ import {
   type PromptContext,
 } from "./shared";
 
-export const INDEPENDENT_USER_PROMPT_VERSION = "independent-user-v4";
+export const INDEPENDENT_USER_PROMPT_VERSION = "independent-user-v5";
 
 export function buildIndependentMessagePrompt(ctx: PromptContext): string {
   return [
@@ -23,7 +22,6 @@ export function buildIndependentMessagePrompt(ctx: PromptContext): string {
     optionsBlock(ctx),
     yourMessageBlock(ctx),
     timeLimitBlock(ctx),
-    messageFormatInstructions(ctx.lang),
   ].join("\n\n");
 }
 
@@ -37,6 +35,5 @@ export function buildIndependentDecisionPrompt(
     optionsBlock(ctx),
     exchange ? exchangedMessagesBlock(ctx, exchange.own, exchange.partner) : noMessageDecisionNote(ctx),
     timeLimitBlock(ctx),
-    decisionFormatInstructions(ctx.lang),
   ].join("\n\n");
 }

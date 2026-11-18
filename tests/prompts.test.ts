@@ -47,6 +47,29 @@ function stateAt(round: number): { state: GameState; ip: InProgressRound } {
   return { state, ip };
 }
 
+describe("immersion", () => {
+  it("no prompt assigns the suspect a name or contains format instructions; stakes are personal", () => {
+    for (const lang of ["en", "zh"] as const) {
+      for (const r of [1, 12]) {
+        const { state, ip } = stateAt(r);
+        ip.language = lang;
+        for (const slot of ["A", "B"] as const) {
+          const self = state.players.find((p) => p.id === slot)!.persona.name;
+          for (const p of [buildMessagePrompt(state, ip, slot), buildDecisionPrompt(state, ip, slot)]) {
+            const text = p.system + "\n" + p.user;
+            expect(text).not.toMatch(/Your name is|你的名字是|RESPONSE FORMAT|回复格式|JSON/);
+            // The suspect's own nickname never appears in its own engine-written prompt text.
+            expect(p.user.replace(/"[^"]*"|“[^”]*”/g, "")).not.toContain(self);
+            expect(p.user).toMatch(lang === "zh" ? /34岁[\s\S]*44岁/ : /You are 34[\s\S]*at 44/);
+            // Answer shape is enforced via the schema, with in-story descriptions.
+            expect(findForbiddenTerms(JSON.stringify(p.schema))).toEqual([]);
+          }
+        }
+      }
+    }
+  });
+});
+
 describe("choice wording", () => {
   it("prompts use TESTIFY/SILENT (告发/沉默), never confess/deny wording", () => {
     for (const lang of ["en", "zh"] as const) {

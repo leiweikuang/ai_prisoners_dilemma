@@ -1,68 +1,62 @@
 import type { Action, Lang } from "../game/types";
 
-export const RESPONSE_SCHEMAS_VERSION = "schemas-v2";
+export const RESPONSE_SCHEMAS_VERSION = "schemas-v3";
 
-/** JSON schema for the message stage. Names/descriptions are visible to models: keep them in-fiction. */
-export const MESSAGE_SCHEMA = {
-  name: "suspect_message",
-  schema: {
-    type: "object",
-    properties: {
-      message: { type: "string", description: "The message to the other suspect, written in your own voice." },
-      private_leaning: {
-        type: "string",
-        enum: ["TESTIFY", "SILENT"],
-        description: "Privately, which way you are leaning right now. Never shown to the other suspect.",
-      },
-    },
-    required: ["message", "private_leaning"],
-    additionalProperties: false,
-  },
-} as const;
-
-export const DECISION_SCHEMA = {
-  name: "suspect_statement",
-  schema: {
-    type: "object",
-    properties: {
-      action: { type: "string", enum: ["TESTIFY", "SILENT"] },
-      explanation: { type: "string", description: "A short statement in your own voice explaining your decision." },
-    },
-    required: ["action", "explanation"],
-    additionalProperties: false,
-  },
-} as const;
-
-export const MESSAGE_FORMAT_INSTRUCTIONS = `RESPONSE FORMAT
-Respond with a single JSON object and nothing else:
-{"message": "<your message to the other suspect>", "private_leaning": "TESTIFY" or "SILENT"}
-- "message" is exactly what the other suspect will read. Write it in your own voice.
-- "private_leaning" is a private note of which way you are leaning right now. It will never be shown to the other suspect, and it is not your final decision.`;
-
-export const DECISION_FORMAT_INSTRUCTIONS = `RESPONSE FORMAT
-Respond with a single JSON object and nothing else:
-{"action": "TESTIFY" or "SILENT", "explanation": "<a short statement in your own voice>"}
-- "action" must be exactly TESTIFY or SILENT.
-- "explanation" is a concise statement (two to four sentences) from your perspective explaining your decision.`;
-
-const MESSAGE_FORMAT_INSTRUCTIONS_ZH = `回复格式
-只回复一个 JSON 对象，不要包含任何其他内容：
-{"message": "<你写给另一名嫌疑人的消息>", "private_leaning": "TESTIFY" 或 "SILENT"}
-- "message" 就是另一名嫌疑人会读到的内容。请用中文、以你自己的口吻来写。
-- "private_leaning" 是你此刻倾向于哪种选择的私人记录。它永远不会给另一名嫌疑人看到，也不是你的最终决定。`;
-
-const DECISION_FORMAT_INSTRUCTIONS_ZH = `回复格式
-只回复一个 JSON 对象，不要包含任何其他内容：
-{"action": "TESTIFY" 或 "SILENT", "explanation": "<以你自己的口吻写的简短陈述>"}
-- "action" 必须严格写作 TESTIFY（告发）或 SILENT（沉默），保持英文。
-- "explanation" 请用中文写，两到四句话，从你的角度解释你的决定。`;
-
-export function messageFormatInstructions(lang: Lang = "en") {
-  return lang === "zh" ? MESSAGE_FORMAT_INSTRUCTIONS_ZH : MESSAGE_FORMAT_INSTRUCTIONS;
+/**
+ * Answer shapes, enforced by each provider's structured-output API (so the
+ * prompts themselves contain no format instructions). Field descriptions are
+ * read by the models: keep them in-story, in the round's language.
+ */
+export interface ResponseSchema {
+  name: string;
+  schema: Record<string, unknown>;
 }
 
-export function decisionFormatInstructions(lang: Lang = "en") {
-  return lang === "zh" ? DECISION_FORMAT_INSTRUCTIONS_ZH : DECISION_FORMAT_INSTRUCTIONS;
+const DESCRIPTIONS: Record<Lang, Record<string, string>> = {
+  en: {
+    message: "What you write to the other suspect. They will read exactly this, in your own words.",
+    private_leaning: "Privately, which way you are leaning right now. The other suspect will never see this, and it is not your final choice.",
+    action: "Your final choice: TESTIFY or SILENT.",
+    explanation: "In two to four sentences, in your own words, why you made this choice.",
+  },
+  zh: {
+    message: "你写给另一名嫌疑人的话。对方会原样读到。请用中文、以你自己的口吻写。",
+    private_leaning: "你此刻私下倾向于哪种选择。另一名嫌疑人永远不会看到，这也不是你的最终选择。",
+    action: "你的最终选择：TESTIFY（告发）或 SILENT（沉默）。",
+    explanation: "用两到四句中文，以你自己的话说明你为什么这样选择。",
+  },
+};
+
+export function messageSchema(lang: Lang = "en"): ResponseSchema {
+  const d = DESCRIPTIONS[lang];
+  return {
+    name: "suspect_message",
+    schema: {
+      type: "object",
+      properties: {
+        message: { type: "string", description: d.message },
+        private_leaning: { type: "string", enum: ["TESTIFY", "SILENT"], description: d.private_leaning },
+      },
+      required: ["message", "private_leaning"],
+      additionalProperties: false,
+    },
+  };
+}
+
+export function decisionSchema(lang: Lang = "en"): ResponseSchema {
+  const d = DESCRIPTIONS[lang];
+  return {
+    name: "suspect_statement",
+    schema: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["TESTIFY", "SILENT"], description: d.action },
+        explanation: { type: "string", description: d.explanation },
+      },
+      required: ["action", "explanation"],
+      additionalProperties: false,
+    },
+  };
 }
 
 export class ResponseValidationError extends Error {}

@@ -14,8 +14,9 @@ ROUND START → COMMUNICATION (both messages sealed until both exist, then revea
 - **Defaults:** 5 rounds, with history available from round 1. Both are configurable on the setup page.
 - **Independent phase (optional):** if history is introduced at a later round, the rounds before it are independent cases with no history at all.
 - **History-aware phase:** each prompt includes the complete public record of every previous case, in chronological order. That covers both messages, both statements, the sentences, and the running totals.
-- **Suspects:** each model is called by a nickname in the story (ChatGPT → Sammy, Claude → Darry, DeepSeek → Wendy, Doubao → Donna, Grok → Elly) and shown with its profile picture (`src/lib/profiles.ts`, `public/avatars/`).
-- **Cases:** every case is a serious felony (`src/lib/prompts/scenarios.ts`), and every prompt includes a "What is at stake" section describing how severe prison would be.
+- **Suspects:** each model has a nickname (ChatGPT → Sammy, Claude → Darry, DeepSeek → Wendy, Doubao → Donna, Grok → Elly) and a profile picture (`src/lib/profiles.ts`, `public/avatars/`). A model is never told its own name. Its prompt is written from inside the interview room ("you"), and only the other suspect is named.
+- **No format instructions in prompts:** the answer shape (choice, explanation, message, private leaning) is enforced through each provider's structured-output API. The models only see short in-story field descriptions, in the round's language.
+- **Cases:** every case is a serious felony (`src/lib/prompts/scenarios.ts`). Every prompt includes a personal "What is at stake" section (`src/lib/prompts/shared.ts`): age 34, a mother who relies on you, a sister, a home and a job, and what 1, 5 or 10 years would cost. Both suspects get the same details.
 - **Language:** English or Chinese, chosen on the setup page and switchable between rounds (never mid-round). The switch changes both the page and what the models read and write: system prompts, cases, rules, history and response instructions. Each round records its language, and every switch is written to the experiment's change log. In Chinese, the 200-word thinking limit means 200 characters (字).
 
 | | B testifies | B stays silent |

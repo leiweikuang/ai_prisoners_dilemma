@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { OpenAIPlayer } from "@/lib/ai/openai";
 import { ClaudePlayer } from "@/lib/ai/claude";
-import { DECISION_SCHEMA } from "@/lib/prompts/schemas";
+import { decisionSchema } from "@/lib/prompts/schemas";
 
-const prompt = { system: "s", user: "u", schema: DECISION_SCHEMA as unknown as { name: string; schema: Record<string, unknown> } };
+const prompt = { system: "s", user: "u", schema: decisionSchema("en") };
 const toolParams = { tools: [{ type: "web_search" }], tool_choice: "auto", mcp_servers: [{ url: "x" }] };
 
 describe("no internet access", () => {
