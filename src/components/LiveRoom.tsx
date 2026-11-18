@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CommunicationEntry, PlayerState, PublicGameState, RoundResult, Stage } from "@/lib/game/types";
 import { HistoryTable } from "@/components/HistoryTable";
-import { ActionBadge, providerColor, Thinking, Thoughts, Years } from "@/components/ui";
+import { ActionBadge, providerColor, Thinking, Years } from "@/components/ui";
+import { EarlierRounds, SuspectColumn } from "@/components/Transcript";
 
 type View = "idle" | "comm_pending" | "comm_reveal" | "deliberation" | "locked" | "reaction" | "countdown" | "reveal";
 
@@ -199,6 +200,8 @@ export function LiveView({ id }: { id: string }) {
   const messages: { playerA: CommunicationEntry; playerB: CommunicationEntry } | null =
     showingLast ? lastRound?.communication ?? null : ip?.communication ?? null;
   const revealRound = showingLast ? lastRound : undefined;
+  // Every completed round except the one currently shown in the live transcript above.
+  const earlierRounds = showingLast && lastRound ? game.rounds.slice(0, -1) : game.rounds;
 
   const statusFor = (slot: "A" | "B"): string => {
     switch (view) {
@@ -338,52 +341,18 @@ export function LiveView({ id }: { id: string }) {
           Thoughts are the provider&apos;s summary of each model&apos;s internal reasoning. Spectators only — the other suspect never sees them.
         </p>
         <div className="mt-5 grid gap-x-8 gap-y-6 md:grid-cols-2">
-          {([["A", pa, pb, "playerA"], ["B", pb, pa, "playerB"]] as const).map(([slot, p, other, k]) => {
-            const color = providerColor(p.provider);
-            const m = messages?.[k];
-            const after = afterRound?.decisions[k];
-            const statement = revealRound?.decisions[k];
-            return (
-              <div key={slot} className="flex flex-col gap-5">
-                <div className="font-display text-sm uppercase tracking-[0.2em]" style={{ color }}>
-                  {p.name}
-                </div>
-                {/* Step 1–2: thoughts directly above the message */}
-                {m ? (
-                  <>
-                    <Thoughts text={m.thoughts} label="Thoughts before writing" color={color} animate={view === "comm_reveal"} />
-                    <div className={view === "comm_reveal" ? "rise" : ""} style={{ animationDelay: "0.6s" }}>
-                      <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-dim">Message to {other.name}</div>
-                      <p className="mt-1.5 whitespace-pre-wrap border border-edge bg-ink/70 p-4 font-mono text-sm leading-relaxed text-zinc-200" style={{ borderLeftColor: color, borderLeftWidth: 2 }}>
-                        “{m.message}”
-                      </p>
-                    </div>
-                  </>
-                ) : view === "comm_pending" ? (
-                  <Thinking label="Thinking · writing message" />
-                ) : (
-                  <p className="font-mono text-xs text-dim">No message yet for this case.</p>
-                )}
-                {/* Step 3: thoughts after reading the other suspect's message */}
-                {after ? (
-                  <Thoughts text={after.thoughts} label={`Thoughts after reading ${other.name}'s message`} color={color} animate={view === "reaction"} />
-                ) : view === "deliberation" ? (
-                  <Thinking label="Reading message · deciding" />
-                ) : null}
-                {/* Step 4: statement */}
-                {statement && (
-                  <div className={view === "reveal" ? "rise" : ""}>
-                    <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-dim">
-                      Statement to police <ActionBadge action={statement.action} />
-                    </div>
-                    <p className="mt-1.5 border-l-2 pl-3 text-sm leading-relaxed text-zinc-300" style={{ borderColor: color }}>
-                      {statement.explanation}
-                    </p>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          {([["A", pa, pb, "playerA"], ["B", pb, pa, "playerB"]] as const).map(([slot, p, other, k]) => (
+            <SuspectColumn
+              key={slot}
+              p={p}
+              other={other}
+              message={messages?.[k]}
+              after={afterRound?.decisions[k]}
+              statement={revealRound?.decisions[k]}
+              pending={view === "comm_pending" ? "writing" : view === "deliberation" ? "deciding" : null}
+              animate={{ message: view === "comm_reveal", after: view === "reaction", statement: view === "reveal" }}
+            />
+          ))}
         </div>
       </section>
 
@@ -434,9 +403,17 @@ export function LiveView({ id }: { id: string }) {
         </div>
       </section>
 
+      {/* Earlier rounds: full chat history, never cleared */}
+      {earlierRounds.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.3em] text-dim">Earlier rounds · full transcripts, newest first</h2>
+          <EarlierRounds rounds={earlierRounds} players={game.players} memoryStartRound={game.memoryStartRound} />
+        </section>
+      )}
+
       {/* History */}
       <section className="mt-8">
-        <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.3em] text-dim">Round history · click a round for the full transcript</h2>
+        <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.3em] text-dim">Round summary · click a round for details</h2>
         <HistoryTable rounds={game.rounds} players={game.players} memoryStartRound={game.memoryStartRound} />
       </section>
     </main>
