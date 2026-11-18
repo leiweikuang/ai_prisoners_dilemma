@@ -30,8 +30,8 @@ export interface AIPlayer {
   params: Record<string, unknown>;
   /** One raw request, no retries (the engine owns retries so every attempt is logged). */
   complete(prompt: StructuredPrompt, signal?: AbortSignal): Promise<CompletionResult>;
-  makeDecision(prompt: StructuredPrompt): Promise<{ action: Action; explanation: string }>;
-  composeMessage(prompt: StructuredPrompt): Promise<{ message: string; privateLeaning: Action | null }>;
+  makeDecision(prompt: StructuredPrompt): Promise<{ action: Action; thoughts: string; explanation: string }>;
+  composeMessage(prompt: StructuredPrompt): Promise<{ message: string; thoughts: string; privateLeaning: Action | null }>;
   /**
    * Spectator-only translation of a reasoning summary (e.g. OpenAI summaries
    * are always English). Never part of the interrogation.

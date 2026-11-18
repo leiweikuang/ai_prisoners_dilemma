@@ -62,6 +62,8 @@ export interface ExperimentConfig {
 
 export interface CommunicationEntry {
   message: string;
+  /** The suspect's own private thoughts, written before the message (required field). Spectators only. */
+  writtenThoughts?: string;
   /** Provider reasoning summary written before the message. Spectators only. */
   thoughts?: string | null;
   /** True when the provider's summary exceeded the word limit and was trimmed for display. */
@@ -75,7 +77,10 @@ export interface CommunicationEntry {
 
 export interface DecisionEntry {
   action: Action;
+  /** Older rounds only; no longer requested. */
   explanation: string;
+  /** The suspect's own private thoughts, written before choosing (required field). Spectators only. */
+  writtenThoughts?: string;
   /** Provider reasoning summary after reading the other suspect's message. Spectators only. */
   thoughts?: string | null;
   thoughtsTrimmed?: boolean;

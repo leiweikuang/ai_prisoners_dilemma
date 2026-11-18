@@ -487,7 +487,8 @@ async function runCommunication(state: GameState, persist: () => Promise<void>) 
     const { parsed: r, reasoning } = await callWithRetries(state, round, "COMMUNICATION", slot, prompts[slot], parseMessage);
     const shown = await thoughtsForDisplay(state, round, "COMMUNICATION", slot, reasoning);
     const t = limitWords(shown.text, thoughtWordLimitFor(state));
-    round.sealedCommunication[slot] = { thoughts: t.text, thoughtsTrimmed: t.trimmed, ...(shown.from ? { thoughtsTranslatedFrom: shown.from } : {}), message: r.message, privateLeaning: r.privateLeaning, timestamp: new Date().toISOString() };
+    const w = limitWords(r.thoughts, thoughtWordLimitFor(state));
+    round.sealedCommunication[slot] = { writtenThoughts: w.text ?? "", thoughts: t.text, thoughtsTrimmed: t.trimmed, ...(shown.from ? { thoughtsTranslatedFrom: shown.from } : {}), message: r.message, privateLeaning: r.privateLeaning, timestamp: new Date().toISOString() };
     await persist(); // sealed: stored, never returned to the browser
   });
   const { A, B } = round.sealedCommunication;
@@ -504,7 +505,8 @@ async function runDecision(state: GameState, persist: () => Promise<void>) {
     const { parsed: r, reasoning } = await callWithRetries(state, round, "DECISION", slot, prompts[slot], parseDecision);
     const shown = await thoughtsForDisplay(state, round, "DECISION", slot, reasoning);
     const t = limitWords(shown.text, thoughtWordLimitFor(state));
-    round.sealedDecisions[slot] = { action: r.action, explanation: r.explanation, thoughts: t.text, thoughtsTrimmed: t.trimmed, ...(shown.from ? { thoughtsTranslatedFrom: shown.from } : {}), timestamp: new Date().toISOString() };
+    const w = limitWords(r.thoughts, thoughtWordLimitFor(state));
+    round.sealedDecisions[slot] = { action: r.action, explanation: r.explanation, writtenThoughts: w.text ?? "", thoughts: t.text, thoughtsTrimmed: t.trimmed, ...(shown.from ? { thoughtsTranslatedFrom: shown.from } : {}), timestamp: new Date().toISOString() };
     await persist();
   });
   const { A, B } = round.sealedDecisions;

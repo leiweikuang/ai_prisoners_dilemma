@@ -107,7 +107,7 @@ export function LiveView({ id }: { id: string }) {
         }
         setView("comm_reveal");
         const c = (r.data.game as PublicGameState).inProgress?.communication;
-        await hold(readingMs([c?.playerA.thoughts, c?.playerA.message], [c?.playerB.thoughts, c?.playerB.message]));
+        await hold(readingMs([c?.playerA.writtenThoughts ?? c?.playerA.thoughts, c?.playerA.message], [c?.playerB.writtenThoughts ?? c?.playerB.thoughts, c?.playerB.message]));
       }
 
       g = gameRef.current!;
@@ -127,7 +127,7 @@ export function LiveView({ id }: { id: string }) {
       await sleep(1500);
       // Show each suspect's thoughts after reading the other's message, before the statements.
       setView("reaction");
-      await hold(readingMs([done?.decisions.playerA.thoughts], [done?.decisions.playerB.thoughts]));
+      await hold(readingMs([done?.decisions.playerA.writtenThoughts ?? done?.decisions.playerA.thoughts], [done?.decisions.playerB.writtenThoughts ?? done?.decisions.playerB.thoughts]));
       setView("countdown");
       for (let c = 3; c >= 1; c--) {
         setCountdown(c);
