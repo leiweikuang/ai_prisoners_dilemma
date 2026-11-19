@@ -226,7 +226,7 @@ export default function SetupPage() {
   };
 
   const numField = "mt-1.5 w-full border border-edge bg-ink/80 px-3 py-2.5 tabular-nums text-tube outline-none focus:border-lamp";
-  const numLabel = "flex min-h-[2.6rem] items-end text-[11px] font-semibold uppercase tracking-[0.14em] text-dim";
+  const numLabel = "flex h-[3.4rem] items-end text-[11px] font-semibold uppercase tracking-[0.14em] text-dim";
   return (
     <LangContext.Provider value={lang}>
       <main className="mx-auto w-full max-w-[1500px] px-4 pb-16 pt-5 md:px-8">

@@ -312,20 +312,20 @@ export function LiveView({ id }: { id: string }) {
         </div>
 
         {/* Door plate and time served, on the dark ceiling band */}
-        <div className="relative z-10 flex items-start justify-between gap-4 px-6 pt-3">
+        <div className="ceiling relative z-10 flex flex-col gap-2 px-6 pb-6 pt-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="min-w-0">
-            <h2 className="flex flex-wrap items-baseline gap-x-3 leading-none">
-              <span className="font-plate text-lg font-semibold uppercase tracking-[0.18em] text-fog">{t.room(slot)}</span>
-              <span className="font-display text-4xl font-extrabold uppercase tracking-wide" style={{ color }}>
+            <h2 className="flex items-baseline gap-x-3 whitespace-nowrap leading-none">
+              <span className="font-plate text-base font-semibold uppercase tracking-[0.18em] text-fog sm:text-lg">{t.room(slot)}</span>
+              <span className="font-display text-3xl font-extrabold uppercase tracking-wide sm:text-4xl" style={{ color }}>
                 {p.name}
               </span>
             </h2>
-            <p className="mt-1.5 truncate text-xs text-dim">
+            <p className="mt-1.5 text-xs text-fog">
               {p.model} · {t.as(p.persona.name)}
             </p>
           </div>
-          <p className="whitespace-nowrap text-right font-display font-extrabold uppercase leading-none text-tube">
-            <span className="text-5xl">{p.cumulativePrisonYears}</span>
+          <p className="whitespace-nowrap font-display font-extrabold uppercase leading-none text-tube sm:text-right">
+            <span className="text-4xl sm:text-5xl">{p.cumulativePrisonYears}</span>
             <span className="ml-1.5 text-lg text-fog">{t.yearsServed(p.cumulativePrisonYears)}</span>
           </p>
         </div>

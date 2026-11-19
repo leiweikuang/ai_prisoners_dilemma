@@ -1,0 +1,471 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-19T05:02:27.075566+00:00",
+  "title": "Design System: AI Interrogation",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "neutral",
+        "displayName": "Booth Ink",
+        "canonical": "oklch(14.5% 0.007 213)",
+        "tonalRamp": [
+          "oklch(15% 0.007 213)",
+          "oklch(26% 0.007 213)",
+          "oklch(38% 0.007 213)",
+          "oklch(49% 0.007 213)",
+          "oklch(61% 0.007 213)",
+          "oklch(72% 0.007 213)",
+          "oklch(84% 0.007 213)",
+          "oklch(95% 0.007 213)"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Console Housing",
+        "canonical": "oklch(19.3% 0.012 206)",
+        "tonalRamp": [
+          "oklch(15% 0.012 206)",
+          "oklch(26% 0.012 206)",
+          "oklch(38% 0.012 206)",
+          "oklch(49% 0.012 206)",
+          "oklch(61% 0.012 206)",
+          "oklch(72% 0.012 206)",
+          "oklch(84% 0.012 206)",
+          "oklch(95% 0.012 206)"
+        ]
+      },
+      "glass": {
+        "role": "neutral",
+        "displayName": "Smoked Glass",
+        "canonical": "oklch(21.8% 0.019 196)",
+        "tonalRamp": [
+          "oklch(15% 0.019 196)",
+          "oklch(26% 0.019 196)",
+          "oklch(38% 0.019 196)",
+          "oklch(49% 0.019 196)",
+          "oklch(61% 0.019 196)",
+          "oklch(72% 0.019 196)",
+          "oklch(84% 0.019 196)",
+          "oklch(95% 0.019 196)"
+        ]
+      },
+      "edge": {
+        "role": "neutral",
+        "displayName": "Glazing Bar",
+        "canonical": "oklch(29.6% 0.019 191)",
+        "tonalRamp": [
+          "oklch(15% 0.019 191)",
+          "oklch(26% 0.019 191)",
+          "oklch(38% 0.019 191)",
+          "oklch(49% 0.019 191)",
+          "oklch(61% 0.019 191)",
+          "oklch(72% 0.019 191)",
+          "oklch(84% 0.019 191)",
+          "oklch(95% 0.019 191)"
+        ]
+      },
+      "dim": {
+        "role": "neutral",
+        "displayName": "Glass Tint",
+        "canonical": "oklch(68.5% 0.029 182)",
+        "tonalRamp": [
+          "oklch(15% 0.007 182)",
+          "oklch(26% 0.013 182)",
+          "oklch(38% 0.018 182)",
+          "oklch(49% 0.024 182)",
+          "oklch(61% 0.029 182)",
+          "oklch(72% 0.023 182)",
+          "oklch(84% 0.018 182)",
+          "oklch(95% 0.012 182)"
+        ]
+      },
+      "fog": {
+        "role": "neutral",
+        "displayName": "Reflection Fog",
+        "canonical": "oklch(82.7% 0.021 177)",
+        "tonalRamp": [
+          "oklch(15% 0.005 177)",
+          "oklch(26% 0.009 177)",
+          "oklch(38% 0.013 177)",
+          "oklch(49% 0.017 177)",
+          "oklch(61% 0.020 177)",
+          "oklch(72% 0.017 177)",
+          "oklch(84% 0.013 177)",
+          "oklch(95% 0.009 177)"
+        ]
+      },
+      "body-text": {
+        "role": "neutral",
+        "displayName": "Booth Text",
+        "canonical": "oklch(92.3% 0.011 168)",
+        "tonalRamp": [
+          "oklch(15% 0.011 168)",
+          "oklch(26% 0.011 168)",
+          "oklch(38% 0.011 168)",
+          "oklch(49% 0.011 168)",
+          "oklch(61% 0.011 168)",
+          "oklch(72% 0.011 168)",
+          "oklch(84% 0.011 168)",
+          "oklch(95% 0.011 168)"
+        ]
+      },
+      "room": {
+        "role": "neutral",
+        "displayName": "Room Shadow",
+        "canonical": "oklch(27.3% 0.018 190)",
+        "tonalRamp": [
+          "oklch(15% 0.018 190)",
+          "oklch(26% 0.018 190)",
+          "oklch(38% 0.018 190)",
+          "oklch(49% 0.018 190)",
+          "oklch(61% 0.018 190)",
+          "oklch(72% 0.018 190)",
+          "oklch(84% 0.018 190)",
+          "oklch(95% 0.018 190)"
+        ]
+      },
+      "room-wall": {
+        "role": "neutral",
+        "displayName": "Lit Wall",
+        "canonical": "oklch(77.6% 0.022 174)",
+        "tonalRamp": [
+          "oklch(15% 0.005 174)",
+          "oklch(26% 0.009 174)",
+          "oklch(38% 0.014 174)",
+          "oklch(49% 0.018 174)",
+          "oklch(61% 0.021 174)",
+          "oklch(72% 0.017 174)",
+          "oklch(84% 0.013 174)",
+          "oklch(95% 0.009 174)"
+        ]
+      },
+      "tube": {
+        "role": "neutral",
+        "displayName": "Fluorescent Tube",
+        "canonical": "oklch(96.6% 0.010 165)",
+        "tonalRamp": [
+          "oklch(15% 0.010 165)",
+          "oklch(26% 0.010 165)",
+          "oklch(38% 0.010 165)",
+          "oklch(49% 0.010 165)",
+          "oklch(61% 0.010 165)",
+          "oklch(72% 0.010 165)",
+          "oklch(84% 0.010 165)",
+          "oklch(95% 0.010 165)"
+        ]
+      },
+      "lamp": {
+        "role": "primary",
+        "displayName": "Console Amber",
+        "canonical": "oklch(76.7% 0.130 73)",
+        "tonalRamp": [
+          "oklch(15% 0.032 73)",
+          "oklch(26% 0.057 73)",
+          "oklch(38% 0.082 73)",
+          "oklch(49% 0.106 73)",
+          "oklch(61% 0.128 73)",
+          "oklch(72% 0.103 73)",
+          "oklch(84% 0.079 73)",
+          "oklch(95% 0.054 73)"
+        ]
+      },
+      "confess": {
+        "role": "secondary",
+        "displayName": "Testify Oxblood",
+        "canonical": "oklch(59.5% 0.174 28)",
+        "tonalRamp": [
+          "oklch(15% 0.043 28)",
+          "oklch(26% 0.076 28)",
+          "oklch(38% 0.110 28)",
+          "oklch(49% 0.143 28)",
+          "oklch(61% 0.171 28)",
+          "oklch(72% 0.138 28)",
+          "oklch(84% 0.105 28)",
+          "oklch(95% 0.072 28)"
+        ]
+      },
+      "oxblood": {
+        "role": "secondary",
+        "displayName": "Deep Oxblood",
+        "canonical": "oklch(39.4% 0.130 28)",
+        "tonalRamp": [
+          "oklch(15% 0.032 28)",
+          "oklch(26% 0.057 28)",
+          "oklch(38% 0.082 28)",
+          "oklch(49% 0.106 28)",
+          "oklch(61% 0.128 28)",
+          "oklch(72% 0.103 28)",
+          "oklch(84% 0.079 28)",
+          "oklch(95% 0.054 28)"
+        ]
+      },
+      "deny": {
+        "role": "secondary",
+        "displayName": "Silent Glass-White",
+        "canonical": "oklch(94.6% 0.009 161)",
+        "tonalRamp": [
+          "oklch(15% 0.009 161)",
+          "oklch(26% 0.009 161)",
+          "oklch(38% 0.009 161)",
+          "oklch(49% 0.009 161)",
+          "oklch(61% 0.009 161)",
+          "oklch(72% 0.009 161)",
+          "oklch(84% 0.009 161)",
+          "oklch(95% 0.009 161)"
+        ]
+      },
+      "gpt": {
+        "role": "tertiary",
+        "displayName": "ChatGPT Accent",
+        "canonical": "oklch(65.3% 0.123 172)",
+        "tonalRamp": [
+          "oklch(15% 0.031 172)",
+          "oklch(26% 0.054 172)",
+          "oklch(38% 0.078 172)",
+          "oklch(49% 0.101 172)",
+          "oklch(61% 0.122 172)",
+          "oklch(72% 0.098 172)",
+          "oklch(84% 0.075 172)",
+          "oklch(95% 0.051 172)"
+        ]
+      },
+      "claude": {
+        "role": "tertiary",
+        "displayName": "Claude Accent",
+        "canonical": "oklch(65.3% 0.125 42)",
+        "tonalRamp": [
+          "oklch(15% 0.031 42)",
+          "oklch(26% 0.055 42)",
+          "oklch(38% 0.079 42)",
+          "oklch(49% 0.103 42)",
+          "oklch(61% 0.124 42)",
+          "oklch(72% 0.100 42)",
+          "oklch(84% 0.076 42)",
+          "oklch(95% 0.052 42)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Page titles and the round number on the partition."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Suspect names, case titles, section headings."
+      },
+      "plate": {
+        "displayName": "Plate",
+        "purpose": "Stencil room labels and console section labels."
+      },
+      "stamp": {
+        "displayName": "Stamp",
+        "purpose": "The TESTIFY / SILENT decision struck onto the glass."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Notes, analysis, explanations."
+      },
+      "thought": {
+        "displayName": "Thought",
+        "purpose": "Inner monologue rendered as a reflection on the glass."
+      },
+      "intercom": {
+        "displayName": "Intercom",
+        "purpose": "Pre-interrogation messages only."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Form labels and table headers."
+      }
+    },
+    "shadows": [
+      {
+        "name": "tube-glow",
+        "value": "0 2px 18px 4px rgba(238,246,242,.45), 0 24px 80px 30px rgba(238,246,242,.12)",
+        "purpose": "The fluorescent tube."
+      },
+      {
+        "name": "console-key",
+        "value": "0 1px 2px rgba(0,0,0,.7), 0 4px 10px rgba(0,0,0,.35)",
+        "purpose": "Resting console keys."
+      },
+      {
+        "name": "console-key-pressed",
+        "value": "0 1px 1px rgba(0,0,0,.6)",
+        "purpose": "Pressed console keys."
+      },
+      {
+        "name": "stamp-plate",
+        "value": "0 6px 18px rgba(0,0,0,.45)",
+        "purpose": "Decision label on the glass."
+      },
+      {
+        "name": "signal-on",
+        "value": "0 0 10px 2px rgba(229,165,75,.55)",
+        "purpose": "Lit amber lamp."
+      },
+      {
+        "name": "console-bevel",
+        "value": "inset 0 1px 0 rgba(229,165,75,.35)",
+        "purpose": "Console top edge."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-expo",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Room lighting, rise, condense and stamp."
+      },
+      {
+        "name": "room-light",
+        "value": "900ms",
+        "purpose": "A room dimming or lighting up."
+      },
+      {
+        "name": "condense",
+        "value": "1.6s",
+        "purpose": "Thoughts condensing onto the glass from blur."
+      },
+      {
+        "name": "stamp",
+        "value": "0.55s",
+        "purpose": "Decision stamp from scale 1.9 at -9deg to 1 at -5deg."
+      },
+      {
+        "name": "negative-beat",
+        "value": "0.45s steps(1,end)",
+        "purpose": "The frame inverts once at the reveal."
+      },
+      {
+        "name": "key-press",
+        "value": "120ms ease-out",
+        "purpose": "Console key press."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Console Key",
+      "kind": "button",
+      "refersTo": "console-key",
+      "description": "Every console control: playback, export, language, retry.",
+      "html": "<button class=\"ds-key\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M4 3l9 5-9 5z\"/></svg>Play</button>",
+      "css": ".ds-key{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 16px;border:1px solid #3a4644;background:#121c1c;color:#dfe8e4;font:600 14px 'Public Sans',system-ui,sans-serif;border-radius:0;box-shadow:0 1px 2px rgba(0,0,0,.7),0 4px 10px rgba(0,0,0,.35);transition:transform 120ms ease-out,box-shadow 120ms ease-out,background 200ms ease-out;cursor:pointer}.ds-key:hover{background:#182424}.ds-key:active{transform:translateY(2px);box-shadow:0 1px 1px rgba(0,0,0,.6)}.ds-key:focus-visible{outline:2px solid #e5a54b;outline-offset:3px}"
+    },
+    {
+      "name": "Primary Console Key",
+      "kind": "button",
+      "refersTo": "console-key-primary",
+      "description": "The one amber key: Continue, Begin interrogation, Send.",
+      "html": "<button class=\"ds-key ds-key-primary\">Begin interrogation</button>",
+      "css": ".ds-key{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 16px;border:1px solid #3a4644;background:#121c1c;color:#dfe8e4;font:600 14px 'Public Sans',system-ui,sans-serif;border-radius:0;box-shadow:0 1px 2px rgba(0,0,0,.7),0 4px 10px rgba(0,0,0,.35);transition:transform 120ms ease-out,box-shadow 120ms ease-out,background 200ms ease-out;cursor:pointer}.ds-key:hover{background:#182424}.ds-key:active{transform:translateY(2px);box-shadow:0 1px 1px rgba(0,0,0,.6)}.ds-key:focus-visible{outline:2px solid #e5a54b;outline-offset:3px}.ds-key-primary{border-color:#e5a54b;background:#e5a54b;color:#160d02;padding:0 24px}.ds-key-primary:hover{background:#f0b562}"
+    },
+    {
+      "name": "Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Square booth field with an amber caret and focus border.",
+      "html": "<label class=\"ds-label\">Number of cases (rounds)<input class=\"ds-input\" value=\"3\"></label>",
+      "css": ".ds-label{display:flex;flex-direction:column;gap:6px;font:600 11px 'Public Sans',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#87a09b}.ds-input{border:1px solid #22302f;background:#070b0c;color:#eef6f2;padding:8px 12px;font:400 16px 'Public Sans',sans-serif;caret-color:#e5a54b;outline:none;border-radius:0}.ds-input:focus{border-color:#e5a54b}"
+    },
+    {
+      "name": "Decision Stamp",
+      "kind": "custom",
+      "refersTo": "stamp-testify",
+      "description": "The decision struck onto the glass at the reveal.",
+      "html": "<div style=\"display:flex;gap:24px;padding:24px;background:#a9bbb5\"><span class=\"ds-stamp ds-testify\">TESTIFY</span><span class=\"ds-stamp ds-silent\">SILENT</span></div>",
+      "css": ".ds-stamp{display:inline-block;padding:8px 18px;background:rgba(7,11,12,.86);box-shadow:0 6px 18px rgba(0,0,0,.45);font:800 48px/1 'Big Shoulders Stencil','Big Shoulders',sans-serif;letter-spacing:.12em;transform:rotate(-5deg);border:3px double currentColor}.ds-testify{color:#d24a3f}.ds-silent{color:#e8efeb}"
+    },
+    {
+      "name": "Glass Plate",
+      "kind": "card",
+      "refersTo": "glass-plate",
+      "description": "Smoked plate at the foot of a room carrying the inner monologue as a reflection.",
+      "html": "<div class=\"ds-plate\"><div class=\"ds-plate-label\">Thoughts before deciding</div><p class=\"ds-reflection\">I'm not saying anything. I'm trusting that we both keep our mouths shut.</p></div>",
+      "css": ".ds-plate{padding:24px;background:linear-gradient(180deg,rgba(8,16,16,.78),rgba(6,12,12,.9));box-shadow:inset 0 1px 0 rgba(220,240,234,.12);max-width:420px}.ds-plate-label{font:600 11px 'Public Sans',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#87a09b}.ds-reflection{margin:10px 0 0;font:italic 300 17px/1.6 'Public Sans',sans-serif;color:#d4e3de;text-shadow:5px 4px 1px rgba(170,210,200,.32),0 0 14px rgba(160,200,192,.22)}"
+    },
+    {
+      "name": "Door Plate",
+      "kind": "custom",
+      "description": "Dark ceiling band naming the room, suspect, model and years served.",
+      "html": "<div class=\"ds-door\"><div><div class=\"ds-door-name\"><span class=\"ds-room\">Room A</span> <span style=\"color:#14a888\">ChatGPT</span></div><div class=\"ds-door-model\">gpt-5 · as “Sam the 'Slam'”</div></div><div class=\"ds-door-years\">6 <small>years served</small></div></div>",
+      "css": ".ds-door{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:12px 24px 24px;background:linear-gradient(180deg,#121b1b 0%,#141e1d 78%,rgba(20,30,29,0) 100%);font-family:'Big Shoulders',sans-serif}.ds-door-name{white-space:nowrap;font-weight:800;font-size:36px;text-transform:uppercase}.ds-room{font:600 18px 'Big Shoulders Stencil',sans-serif;letter-spacing:.18em;color:#b9cbc6}.ds-door-model{font:400 12px 'Public Sans',sans-serif;color:#b9cbc6}.ds-door-years{font-weight:800;font-size:48px;line-height:1;color:#eef6f2;text-transform:uppercase}.ds-door-years small{font-size:20px}"
+    },
+    {
+      "name": "Signal Lamp",
+      "kind": "chip",
+      "description": "Stage lamps on the partition: off, on (amber glow), done.",
+      "html": "<div style=\"display:flex;gap:14px;align-items:center;color:#b9cbc6;font:14px 'Public Sans',sans-serif\"><span class=\"ds-signal\" data-done=\"true\"></span>Communication <span class=\"ds-signal\" data-on=\"true\"></span>Deliberation <span class=\"ds-signal\"></span>Decision</div>",
+      "css": ".ds-signal{display:inline-block;width:9px;height:9px;border-radius:9999px;background:#2a3534;box-shadow:inset 0 1px 1px rgba(0,0,0,.6)}.ds-signal[data-on=true]{background:#e5a54b;box-shadow:0 0 10px 2px rgba(229,165,75,.55)}.ds-signal[data-done=true]{background:#8a7a5c}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Behind the one-way glass",
+    "overview": "The viewer is the detective in a dark observation booth, watching two fluorescent-lit interview rooms through smoked glass. The booth is near-black, the rooms are the brightest things on screen, and the only warm light is the amber console. Built to be screen-recorded: cinematic contrast, both rooms in the first viewport, and a single hard beat at the reveal.",
+    "keyCharacteristics": [
+      "Two lit rooms in a near-black booth, divided by a partition.",
+      "Square corners everywhere; only avatars, lamps and the tube are round.",
+      "Amber only on the console.",
+      "Oxblood = TESTIFY, glass-white = SILENT.",
+      "Thoughts as a doubled reflection; intercom in typewriter type."
+    ],
+    "rules": [
+      {
+        "name": "The Two Decisions Rule",
+        "body": "Oxblood means TESTIFY and glass-white means SILENT everywhere; no other colour stands for a decision.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Warm Light Rule",
+        "body": "Amber belongs to the console: what the detective operates.",
+        "section": "colors"
+      },
+      {
+        "name": "The Backing Rule",
+        "body": "Light text in a lit room sits on .ceiling, .glass-plate or .stamp-plate; text on the bare wall is Booth Ink.",
+        "section": "colors"
+      },
+      {
+        "name": "The Typewriter Rule",
+        "body": "Courier Prime only for words a suspect said over the intercom.",
+        "section": "typography"
+      },
+      {
+        "name": "The Lit-Room Rule",
+        "body": "Only the room that is acting is lit; focus comes from brightness, not scale or borders.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep both rooms and the partition in the first 1440x900 viewport.",
+      "Do put light text in a room on a dark backing.",
+      "Do dim the room that is not acting, with the 900ms expo ease.",
+      "Do honour prefers-reduced-motion.",
+      "Do use the drawn SVG icons for console keys."
+    ],
+    "donts": [
+      "Don't use amber for decisions, or oxblood / glass-white for anything but decisions.",
+      "Don't round panes, keys, inputs or plates.",
+      "Don't set labels or numbers in Courier Prime.",
+      "Don't use coloured side-stripe borders.",
+      "Don't use typed glyph arrows or the native details marker.",
+      "Don't use hard offset shadows on keys.",
+      "Don't use model accent colours for text meaning."
+    ]
+  }
+}

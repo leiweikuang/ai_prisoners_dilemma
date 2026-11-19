@@ -129,7 +129,7 @@ export function ResultsView({ id }: { id: string }) {
         {[[pa, A], [pb, B]].map(([p, s]) => {
           const pl = p as typeof pa, st = s as PlayerAnalysis;
           return (
-            <section key={pl.id} data-lit="true" className="room flex flex-wrap items-center gap-6 px-6 pb-7 pt-12">
+            <section key={pl.id} data-lit="true" className="room room-band flex flex-wrap items-center gap-6 px-6 py-8">
               <Avatar provider={pl.provider} name={pl.name} size={112} className="relative z-10" />
               <div className="relative z-10 min-w-0 flex-1">
                 <h2 className="flex flex-wrap items-baseline gap-x-3 leading-none">
