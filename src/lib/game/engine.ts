@@ -14,7 +14,7 @@ import { personaNames } from "../profiles";
 import { parseDecision, parseMessage } from "../prompts/schemas";
 import { scenarioForRound } from "../prompts/scenarios";
 import { getStore, VersionConflictError } from "../store";
-import { computeSentences, DEFAULT_PAYOFF, normalizePayoff, phaseForRound } from "./payoff";
+import { computeSentences, normalizePayoff, phaseForRound } from "./payoff";
 import { buildDecisionPrompt, buildMessagePrompt, thoughtWordLimitFor, timeLimitFor } from "./prompts";
 import type {
   CallRecord,
@@ -120,6 +120,9 @@ export function createGameState(input: CreateGameInput): GameState {
     if (!prov.available()) throw new EngineError(`Provider ${cfg.provider} is not configured (missing API key?)`, 400, "provider_unavailable");
     const model = (cfg.model || prov.defaultModel()).trim();
     if (!/^[\w.:\-/@]+$/.test(model)) throw new EngineError("Invalid model identifier", 400, "bad_config");
+    // Only models listed for this provider (mock accepts any name, for tests).
+    if (cfg.provider !== "mock" && !(prov.models() as readonly string[]).includes(model))
+      throw new EngineError(`Model "${model}" is not available for ${prov.label}`, 400, "bad_config");
     // Models with built-in web access are not allowed: suspects must not search the internet.
     if (/search|deep-research|browse/i.test(model)) throw new EngineError("Models with built-in web search are not allowed", 400, "bad_config");
     return { slot, name: prov.displayName, provider: cfg.provider, model, params: prov.defaultParams(model), persona: { name: personas[slot] } };

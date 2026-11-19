@@ -11,6 +11,7 @@ export async function GET() {
     label: p.label,
     displayName: p.displayName,
     defaultModel: p.defaultModel(),
+    models: p.models(),
     available: p.available(),
   }));
   return Response.json({ providers, store: storeKind(), onVercel: !!process.env.VERCEL });

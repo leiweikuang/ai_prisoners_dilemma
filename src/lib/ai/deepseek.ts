@@ -21,6 +21,7 @@ export class DeepSeekPlayer extends BaseAIPlayer {
     });
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   static defaultParams(_model?: string): Record<string, unknown> {
     return { max_tokens: 16000 };
   }

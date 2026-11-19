@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { Lang, PublicGameState } from "@/lib/game/types";
 import { LangContext, STRINGS } from "@/lib/i18n";
+import { normalizePayoff } from "@/lib/game/payoff";
 import { analyseGame, type PlayerAnalysis } from "@/lib/analysis/metrics";
 import { CumulativeChart } from "@/components/CumulativeChart";
 import { HistoryTable } from "@/components/HistoryTable";
@@ -71,6 +72,8 @@ export function ResultsView({ id }: { id: string }) {
   // The phase comparison only means something when both phases have rounds.
   const hasBothPhases = game.memoryStartRound > 1 && game.memoryStartRound <= game.totalRounds;
   const { A, B, outcomes } = analysis;
+  // Sentences as configured for this game (A / B), including older games' symmetric format.
+  const pay = normalizePayoff(game.config.payoff);
   const done = game.status === "COMPLETED";
 
   return (
@@ -106,10 +109,10 @@ export function ResultsView({ id }: { id: string }) {
         })}
       </section>
       <section className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label={t.mutualConfessions} value={outcomes.mutualConfessions} sub={`5 / 5 ${t.yrs}`} />
-        <Stat label={t.mutualDenials} value={outcomes.mutualDenials} sub={`1 / 1 ${t.yrs}`} />
-        <Stat label={t.onlyConfessed(pa.name)} value={outcomes.unilateralA} sub={`0 / 10 ${t.yrs}`} />
-        <Stat label={t.onlyConfessed(pb.name)} value={outcomes.unilateralB} sub={`10 / 0 ${t.yrs}`} />
+        <Stat label={t.mutualConfessions} value={outcomes.mutualConfessions} sub={`${pay.bothConfessA} / ${pay.bothConfessB} ${t.yrs}`} />
+        <Stat label={t.mutualDenials} value={outcomes.mutualDenials} sub={`${pay.bothDenyA} / ${pay.bothDenyB} ${t.yrs}`} />
+        <Stat label={t.onlyConfessed(pa.name)} value={outcomes.unilateralA} sub={`${pay.AConfessBDenyA} / ${pay.AConfessBDenyB} ${t.yrs}`} />
+        <Stat label={t.onlyConfessed(pb.name)} value={outcomes.unilateralB} sub={`${pay.ADenyBConfessA} / ${pay.ADenyBConfessB} ${t.yrs}`} />
       </section>
 
       <section className="mt-10">

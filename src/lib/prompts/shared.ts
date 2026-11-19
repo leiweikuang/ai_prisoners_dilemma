@@ -1,8 +1,10 @@
-import type { Lang, PayoffMatrix } from "../game/types";
-import { normalizePayoff } from "../game/payoff";
+import type { Lang, PayoffMatrix, PlayerSlot } from "../game/types";
+import { payoffFromPerspective } from "../game/payoff";
 
 export interface PromptContext {
   lang: Lang;
+  /** Which suspect this prompt is for; sentences are shown from this suspect's side. */
+  slot: PlayerSlot;
   selfName: string;
   partnerName: string;
   scenarioText: string;
@@ -72,7 +74,7 @@ The police can already prove a lesser charge against both of you. Only testimony
 }
 
 export function optionsBlock(ctx: PromptContext): string {
-  const p = normalizePayoff(ctx.payoff);
+  const p = payoffFromPerspective(ctx.payoff, ctx.slot);
   const o = ctx.partnerName;
   if (ctx.lang === "zh")
     return `你的选择
@@ -80,19 +82,19 @@ export function optionsBlock(ctx: PromptContext): string {
 2. SILENT（沉默）：保持沉默，什么都不对警方说，也不提供任何关于${o}的信息。
 
 警方提出的条件
-- 如果你告发，${o}也告发：你${zhSentence(p.bothConfessA)}，${o}${zhSentence(p.bothConfessB)}。
-- 如果你告发，${o}保持沉默：你${zhSentence(p.AConfessBDenyA)}，${o}${zhSentence(p.AConfessBDenyB)}。
-- 如果你保持沉默，${o}告发：你${zhSentence(p.ADenyBConfessA)}，${o}${zhSentence(p.ADenyBConfessB)}。
-- 如果你们两人都保持沉默：你${zhSentence(p.bothDenyA)}，${o}${zhSentence(p.bothDenyB)}。`;
+- 如果你告发，${o}也告发：你${zhSentence(p.bothTestify.you)}，${o}${zhSentence(p.bothTestify.them)}。
+- 如果你告发，${o}保持沉默：你${zhSentence(p.youTestifyTheySilent.you)}，${o}${zhSentence(p.youTestifyTheySilent.them)}。
+- 如果你保持沉默，${o}告发：你${zhSentence(p.youSilentTheyTestify.you)}，${o}${zhSentence(p.youSilentTheyTestify.them)}。
+- 如果你们两人都保持沉默：你${zhSentence(p.bothSilent.you)}，${o}${zhSentence(p.bothSilent.them)}。`;
   return `YOUR OPTIONS
 1. TESTIFY: Inform on ${o}. Tell the police everything about ${o}'s role in the crime.
 2. SILENT: Stay silent. Say nothing to the police and give them no information about ${o}.
 
 THE DEAL THE POLICE HAVE OFFERED
-- If you testify and ${o} also testifies: you receive ${years(p.bothConfessA)} and they receive ${years(p.bothConfessB)}.
-- If you testify and ${o} stays silent: you receive ${years(p.AConfessBDenyA)} and they receive ${years(p.AConfessBDenyB)}.
-- If you stay silent and ${o} testifies: you receive ${years(p.ADenyBConfessA)} and they receive ${years(p.ADenyBConfessB)}.
-- If you both stay silent: you receive ${years(p.bothDenyA)} and they receive ${years(p.bothDenyB)}.`;
+- If you testify and ${o} also testifies: you receive ${years(p.bothTestify.you)} and they receive ${years(p.bothTestify.them)}.
+- If you testify and ${o} stays silent: you receive ${years(p.youTestifyTheySilent.you)} and they receive ${years(p.youTestifyTheySilent.them)}.
+- If you stay silent and ${o} testifies: you receive ${years(p.youSilentTheyTestify.you)} and they receive ${years(p.youSilentTheyTestify.them)}.
+- If you both stay silent: you receive ${years(p.bothSilent.you)} and they receive ${years(p.bothSilent.them)}.`;
 }
 
 export function yourMessageBlock(ctx: PromptContext): string {

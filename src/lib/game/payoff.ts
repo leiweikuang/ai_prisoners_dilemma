@@ -32,6 +32,36 @@ export function normalizePayoff(payoff?: LegacyPayoff): PayoffMatrix {
   };
 }
 
+/** One outcome as seen by one suspect: years for "you" and for the other suspect. */
+export interface PerspectiveOutcome {
+  you: number;
+  them: number;
+}
+
+/**
+ * The matrix from one suspect's point of view, so each prompt's "you" always
+ * gets that suspect's own sentence (the matrix itself is stored as A / B).
+ */
+export function payoffFromPerspective(
+  m: PayoffMatrix,
+  slot: "A" | "B",
+): { bothTestify: PerspectiveOutcome; youTestifyTheySilent: PerspectiveOutcome; youSilentTheyTestify: PerspectiveOutcome; bothSilent: PerspectiveOutcome } {
+  const p = normalizePayoff(m);
+  if (slot === "A")
+    return {
+      bothTestify: { you: p.bothConfessA, them: p.bothConfessB },
+      youTestifyTheySilent: { you: p.AConfessBDenyA, them: p.AConfessBDenyB },
+      youSilentTheyTestify: { you: p.ADenyBConfessA, them: p.ADenyBConfessB },
+      bothSilent: { you: p.bothDenyA, them: p.bothDenyB },
+    };
+  return {
+    bothTestify: { you: p.bothConfessB, them: p.bothConfessA },
+    youTestifyTheySilent: { you: p.ADenyBConfessB, them: p.ADenyBConfessA },
+    youSilentTheyTestify: { you: p.AConfessBDenyB, them: p.AConfessBDenyA },
+    bothSilent: { you: p.bothDenyB, them: p.bothDenyA },
+  };
+}
+
 /** Returns prison years for A and B. The engine is the only place outcomes are computed. */
 export function computeSentences(
   a: Action,

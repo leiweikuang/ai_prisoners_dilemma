@@ -11,7 +11,8 @@ ROUND START → COMMUNICATION (both messages sealed until both exist, then revea
             → sentences calculated by the engine → history updated → next round
 ```
 
-- **Defaults:** 5 rounds, with history available from round 1. Both are configurable on the setup page.
+- **Defaults:** 3 rounds, with history available from round 1. Both are configurable on the setup page, as is the sentencing table (A and B can get different sentences; each suspect's prompt states the sentences from its own side).
+- **Models:** picked from a dropdown per provider (`src/lib/ai/registry.ts`, `KNOWN_MODELS`). The server rejects a model that doesn't belong to the chosen provider. To offer another model, add it to that list, or set it as the provider's default in `.env.local` (`OPENAI_MODEL`, `ANTHROPIC_MODEL`, `DEEPSEEK_MODEL`).
 - **Independent phase (optional):** if history is introduced at a later round, the rounds before it are independent cases with no history at all.
 - **History-aware phase:** each prompt includes the complete public record of every previous case, in chronological order. That covers both messages, both statements, the sentences, and the running totals.
 - **Suspects:** each model has a nickname (ChatGPT → Sammy, Claude → Darry, DeepSeek → Wendy, Doubao → Donna, Grok → Elly) and a profile picture (`src/lib/profiles.ts`, `public/avatars/`). A model is never told its own name. Its prompt is written from inside the interview room ("you"), and only the other suspect is named.
@@ -42,6 +43,7 @@ To try the app without API keys, set `ENABLE_MOCK_PLAYERS=true` and choose "Mock
 |---|---|---|
 | `OPENAI_API_KEY` | yes | Server-side only |
 | `ANTHROPIC_API_KEY` | yes | Server-side only |
+| `DEEPSEEK_API_KEY` | for DeepSeek | Server-side only (`DEEPSEEK_MODEL`, `DEEPSEEK_BASE_URL` optional) |
 | `OPENAI_MODEL` | no | Default OpenAI model (default `gpt-5`). You can override it per experiment. |
 | `ANTHROPIC_MODEL` | no | Default Claude model (default `claude-opus-5-5`). You can override it per experiment. |
 | `OPENAI_REASONING_EFFORT` | no | `reasoning.effort` for OpenAI reasoning models (default `low`) |
