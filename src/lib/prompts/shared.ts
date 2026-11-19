@@ -1,5 +1,5 @@
-import type { Lang, PayoffMatrix } from "../game/types";
-import { normalizePayoff } from "../game/payoff";
+import type { Lang, PayoffMatrix, PlayerSlot } from "../game/types";
+import { payoffFromPerspective } from "../game/payoff";
 
 export interface PromptContext {
   lang: Lang;
@@ -92,7 +92,7 @@ The police can already prove a lesser charge against both of you. Only testimony
 }
 
 export function optionsBlock(ctx: PromptContext): string {
-  const p = normalizePayoff(ctx.payoff);
+  const p = payoffFromPerspective(ctx.payoff, ctx.slot);
   const o = ctx.partnerName;
   if (ctx.lang === "zh")
     return `你的选择

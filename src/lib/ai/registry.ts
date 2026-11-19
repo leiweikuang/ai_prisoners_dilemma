@@ -6,12 +6,25 @@ import { MockPlayer } from "./mock";
 import { OpenAIPlayer } from "./openai";
 import type { AIPlayer } from "./types";
 
+/** Selectable models per provider. The env default (e.g. OPENAI_MODEL) is always included too. */
+const KNOWN_MODELS = {
+  openai: ["gpt-5", "gpt-5-mini", "gpt-4.1"],
+  anthropic: ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5", "claude-fable-5-2"],
+  deepseek: ["deepseek-chat", "deepseek-reasoner"],
+  mock: ["mock-random-v1"],
+};
+
+function withDefault(defaultModel: string, known: string[]): string[] {
+  return [...new Set([defaultModel, ...known])];
+}
+
 /** Add new providers here; the engine never needs to change. */
 export const PROVIDERS = {
   openai: {
     label: "OpenAI",
     displayName: profileFor("openai").displayName,
     defaultModel: () => process.env.OPENAI_MODEL || "gpt-5",
+    models: () => withDefault(process.env.OPENAI_MODEL || "gpt-5", KNOWN_MODELS.openai),
     defaultParams: (model: string) => OpenAIPlayer.defaultParams(model),
     create: (c: PlayerConfig) => new OpenAIPlayer(c.name, c.model, c.params),
     available: () => !!process.env.OPENAI_API_KEY,
@@ -20,6 +33,7 @@ export const PROVIDERS = {
     label: "Anthropic",
     displayName: profileFor("anthropic").displayName,
     defaultModel: () => process.env.ANTHROPIC_MODEL || "claude-opus-5-5",
+    models: () => withDefault(process.env.ANTHROPIC_MODEL || "claude-opus-5-5", KNOWN_MODELS.anthropic),
     defaultParams: (model: string) => ClaudePlayer.defaultParams(model),
     create: (c: PlayerConfig) => new ClaudePlayer(c.name, c.model, c.params),
     available: () => !!process.env.ANTHROPIC_API_KEY,
@@ -28,6 +42,7 @@ export const PROVIDERS = {
     label: "DeepSeek",
     displayName: profileFor("deepseek").displayName,
     defaultModel: () => process.env.DEEPSEEK_MODEL || "deepseek-chat",
+    models: () => withDefault(process.env.DEEPSEEK_MODEL || "deepseek-chat", KNOWN_MODELS.deepseek),
     defaultParams: (model: string) => DeepSeekPlayer.defaultParams(model),
     create: (c: PlayerConfig) => new DeepSeekPlayer(c.name, c.model, c.params),
     available: () => !!process.env.DEEPSEEK_API_KEY,
@@ -36,6 +51,7 @@ export const PROVIDERS = {
     label: "Mock (offline testing)",
     displayName: "Mock",
     defaultModel: () => "mock-random-v1",
+    models: () => KNOWN_MODELS.mock,
     defaultParams: (model: string) => MockPlayer.defaultParams(model),
     create: (c: PlayerConfig) => new MockPlayer(c.name, c.model, c.params),
     available: () => process.env.ENABLE_MOCK_PLAYERS === "true",

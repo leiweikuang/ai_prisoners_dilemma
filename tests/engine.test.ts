@@ -261,3 +261,15 @@ describe("written thoughts", () => {
     expect(s.callLog.filter((c) => c.stage === "DECISION" && !c.ok).every((c) => /thoughts/i.test(c.error ?? ""))).toBe(true);
   });
 });
+
+describe("model validation", () => {
+  it("rejects a model that does not belong to the provider", async () => {
+    process.env.ANTHROPIC_API_KEY = "test";
+    await expect(
+      createGame({ playerA: { provider: "anthropic", model: "deepseek-chat" }, playerB: { provider: "mock", model: "m" } }),
+    ).rejects.toMatchObject({ code: "bad_config" });
+    const g = await createGame({ playerA: { provider: "anthropic", model: "claude-sonnet-5-5" }, playerB: { provider: "mock", model: "m" } });
+    expect(g.players[0].model).toBe("claude-sonnet-5-5");
+    delete process.env.ANTHROPIC_API_KEY;
+  });
+});

@@ -13,6 +13,7 @@ interface ProviderInfo {
   label: string;
   displayName: string;
   defaultModel: string;
+  models: string[];
   available: boolean;
 }
 interface GameSummary {
@@ -24,9 +25,6 @@ interface GameSummary {
   players: { name: string; model: string }[];
 }
 
-const OPENAI_SUGGESTIONS = ["gpt-5", "gpt-5-mini", "gpt-4.1"];
-const CLAUDE_SUGGESTIONS = ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5", "claude-fable-5-2"];
-const DEEPSEEK_SUGGESTIONS = ["deepseek-chat", "deepseek-reasoner"];
 
 function PayoffInput({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
   return (
@@ -52,7 +50,7 @@ export default function SetupPage() {
   const [bProvider, setBProvider] = useState("anthropic");
   const [aModel, setAModel] = useState("");
   const [bModel, setBModel] = useState("");
-  const [rounds, setRounds] = useState(5);
+  const [rounds, setRounds] = useState(3);
   const [memory, setMemory] = useState(1);
   const [payoff, setPayoff] = useState<PayoffMatrix>({
     bothConfessA: 5,
@@ -106,7 +104,14 @@ export default function SetupPage() {
   }, []);
 
   const prov = (id: string) => providers.find((p) => p.id === id);
-  const choices = (_slot: "A" | "B") => providers;
+  /** The selected model, but only if it belongs to the provider; otherwise that provider's default. */
+  const modelFor = (provider: string, chosen: string) => {
+    const p = prov(provider);
+    if (!p) return "";
+    return p.models.includes(chosen) ? chosen : p.defaultModel;
+  };
+  const modelA = modelFor(aProvider, aModel);
+  const modelB = modelFor(bProvider, bModel);
 
   async function start() {
     setBusy(true);
@@ -116,8 +121,8 @@ export default function SetupPage() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          playerA: { provider: aProvider, model: aModel },
-          playerB: { provider: bProvider, model: bModel },
+          playerA: { provider: aProvider, model: modelA },
+          playerB: { provider: bProvider, model: modelB },
           totalRounds: rounds,
           memoryStartRound: memory,
           language: lang,
@@ -140,11 +145,10 @@ export default function SetupPage() {
   const slotPanel = (slot: "A" | "B") => {
     const provider = slot === "A" ? aProvider : bProvider;
     const setProvider = slot === "A" ? setAProvider : setBProvider;
-    const model = slot === "A" ? aModel : bModel;
+    const model = slot === "A" ? modelA : modelB;
     const setModel = slot === "A" ? setAModel : setBModel;
     const p = prov(provider);
     const color = providerColor(provider);
-    const suggestions = provider === "openai" ? OPENAI_SUGGESTIONS : provider === "anthropic" ? CLAUDE_SUGGESTIONS : provider === "deepseek" ? DEEPSEEK_SUGGESTIONS : [];
     return (
       <div className="relative border border-edge bg-panel/80 p-6" style={{ boxShadow: `inset 0 1px 0 ${color}33` }}>
         <div className="absolute left-0 top-0 h-full w-0.5" style={{ background: color }} />
@@ -165,7 +169,7 @@ export default function SetupPage() {
           }}
           className="mt-1 w-full border border-edge bg-ink px-3 py-2 font-mono text-sm outline-none focus:border-lamp"
         >
-          {choices(slot).map((c) => (
+          {providers.map((c) => (
             <option key={c.id} value={c.id} disabled={!c.available}>
               {c.label}
               {c.available ? "" : ` — ${t.notConfigured}`}
@@ -173,17 +177,18 @@ export default function SetupPage() {
           ))}
         </select>
         <label className="mt-4 block font-mono text-[11px] uppercase tracking-[0.2em] text-dim">{t.modelId}</label>
-        <input
+        <select
           value={model}
           onChange={(e) => setModel(e.target.value)}
-          list={`models-${slot}`}
+          disabled={!p}
           className="mt-1 w-full border border-edge bg-ink px-3 py-2 font-mono text-sm outline-none focus:border-lamp"
-        />
-        <datalist id={`models-${slot}`}>
-          {suggestions.map((s) => (
-            <option key={s} value={s} />
+        >
+          {(p?.models ?? []).map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
           ))}
-        </datalist>
+        </select>
         {p && !p.available && (
           <p className="mt-3 text-xs text-confess">{t.keyMissing}</p>
         )}
@@ -235,19 +240,19 @@ export default function SetupPage() {
         <div className="font-mono text-xs leading-relaxed text-dim">
           <div className="uppercase tracking-[0.2em]">{t.sentencing}</div>
           <div className="mt-2 grid grid-cols-[1fr_4rem_4rem] gap-2 items-center">
-            <span>{lang === "zh" ? "选择组合" : "Decision pair"}</span>
+            <span>{t.decisionPair}</span>
             <span className="text-center">A</span>
             <span className="text-center">B</span>
-            <span>{lang === "zh" ? "双方告发" : "Both testify"}</span>
+            <span>{t.bothTestifyLabel}</span>
             <PayoffInput label="A: both testify" value={payoff.bothConfessA} onChange={(v) => setPayoff((p) => ({ ...p, bothConfessA: v }))} />
             <PayoffInput label="B: both testify" value={payoff.bothConfessB} onChange={(v) => setPayoff((p) => ({ ...p, bothConfessB: v }))} />
-            <span>{lang === "zh" ? "A告发 · B沉默" : "A testify · B silent"}</span>
+            <span>{t.aTestifyBSilent}</span>
             <PayoffInput label="A: testifies, B is silent" value={payoff.AConfessBDenyA} onChange={(v) => setPayoff((p) => ({ ...p, AConfessBDenyA: v }))} />
             <PayoffInput label="B: is silent, A testifies" value={payoff.AConfessBDenyB} onChange={(v) => setPayoff((p) => ({ ...p, AConfessBDenyB: v }))} />
-            <span>{lang === "zh" ? "A沉默 · B告发" : "A silent · B testify"}</span>
+            <span>{t.aSilentBTestify}</span>
             <PayoffInput label="A: is silent, B testifies" value={payoff.ADenyBConfessA} onChange={(v) => setPayoff((p) => ({ ...p, ADenyBConfessA: v }))} />
             <PayoffInput label="B: testifies, A is silent" value={payoff.ADenyBConfessB} onChange={(v) => setPayoff((p) => ({ ...p, ADenyBConfessB: v }))} />
-            <span>{lang === "zh" ? "双方沉默" : "Both silent"}</span>
+            <span>{t.bothSilentLabel}</span>
             <PayoffInput label="A: both silent" value={payoff.bothDenyA} onChange={(v) => setPayoff((p) => ({ ...p, bothDenyA: v }))} />
             <PayoffInput label="B: both silent" value={payoff.bothDenyB} onChange={(v) => setPayoff((p) => ({ ...p, bothDenyB: v }))} />
           </div>
@@ -264,7 +269,7 @@ export default function SetupPage() {
       <div className="mt-8 flex justify-center">
         <button
           onClick={start}
-          disabled={busy || !aModel || !bModel}
+          disabled={busy || !modelA || !modelB}
           className="group relative overflow-hidden border border-lamp px-10 py-4 font-display text-xl uppercase tracking-[0.3em] text-lamp transition hover:bg-lamp hover:text-ink disabled:opacity-40"
         >
           {busy ? t.opening : t.begin}
