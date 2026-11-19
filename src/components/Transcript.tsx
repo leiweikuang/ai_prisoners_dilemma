@@ -3,7 +3,7 @@
 import type { CommunicationEntry, DecisionEntry, Lang, PlayerState, RoundResult } from "@/lib/game/types";
 import { useLang, useT } from "@/lib/i18n";
 import { scenarioById, scenarioTitle } from "@/lib/prompts/scenarios";
-import { ActionBadge, Avatar, providerColor, Thinking, Thoughts } from "./ui";
+import { ActionBadge, Avatar, providerColor, ThoughtBlock, Thinking } from "./ui";
 
 /** Case title in the page language (falls back to the stored English title). */
 export function caseTitle(r: { scenarioId: string; scenarioTitle: string }, lang: Lang): string {
@@ -43,7 +43,7 @@ export function SuspectColumn({
       </div>
       {message ? (
         <>
-          <Thoughts text={message.thoughts} trimmed={message.thoughtsTrimmed} translatedFrom={message.thoughtsTranslatedFrom} label={t.thoughtsBefore} color={color} animate={animate.message} />
+          <ThoughtBlock entry={message} label={t.thoughtsBefore} color={color} animate={animate.message} />
           <div className={animate.message ? "rise" : ""} style={{ animationDelay: "0.6s" }}>
             <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-dim">{t.messageTo(other.name)}</div>
             <p
@@ -63,7 +63,7 @@ export function SuspectColumn({
         <p className="font-mono text-xs text-dim">{t.noMessage}</p>
       )}
       {after ? (
-        <Thoughts text={after.thoughts} trimmed={after.thoughtsTrimmed} translatedFrom={after.thoughtsTranslatedFrom} label={t.thoughtsAfter(other.name)} color={color} animate={animate.after} />
+        <ThoughtBlock entry={after} label={t.thoughtsAfter(other.name)} color={color} animate={animate.after} />
       ) : pending === "deciding" ? (
         <Thinking label={t.deciding} />
       ) : null}

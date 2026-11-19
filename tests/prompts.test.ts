@@ -87,9 +87,10 @@ describe("choice wording", () => {
     }
   });
   it("maps model answers to the engine's stored actions", () => {
-    expect(parseDecision('{"action":"TESTIFY","explanation":"x"}').action).toBe("CONFESS");
-    expect(parseDecision('{"action":"SILENT","explanation":"x"}').action).toBe("DENY");
-    expect(parseMessage('{"message":"m","private_leaning":"SILENT"}').privateLeaning).toBe("DENY");
+    expect(parseDecision('{"thoughts":"t","action":"TESTIFY"}').action).toBe("CONFESS");
+    expect(parseDecision('{"thoughts":"t","action":"SILENT"}').action).toBe("DENY");
+    expect(parseMessage('{"thoughts":"t","message":"m","private_leaning":"SILENT"}').privateLeaning).toBe("DENY");
+    expect(() => parseDecision('{"action":"SILENT"}')).toThrow(/thoughts/);
   });
 });
 

@@ -109,3 +109,37 @@ export function LanguageToggle({ value, onChange, disabled = false, title }: { v
     </div>
   );
 }
+
+/**
+ * A suspect's thoughts at one point in the round: its own written private
+ * thoughts (always present on new rounds), plus the provider's reasoning
+ * summary when one was returned (shown collapsed underneath).
+ */
+export function ThoughtBlock({
+  entry,
+  label,
+  color,
+  animate = false,
+}: {
+  entry: { writtenThoughts?: string; thoughts?: string | null; thoughtsTrimmed?: boolean; thoughtsTranslatedFrom?: Lang };
+  label: string;
+  color: string;
+  animate?: boolean;
+}) {
+  const t = useT();
+  if (!entry.writtenThoughts)
+    return <Thoughts text={entry.thoughts} label={label} color={color} trimmed={entry.thoughtsTrimmed} translatedFrom={entry.thoughtsTranslatedFrom} animate={animate} />;
+  return (
+    <div className={animate ? "rise" : ""}>
+      <Thoughts text={entry.writtenThoughts} label={label} color={color} />
+      {entry.thoughts && (
+        <details className="mt-2 pl-3">
+          <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-600 hover:text-dim">{t.providerSummary}</summary>
+          <div className="mt-1.5">
+            <Thoughts text={entry.thoughts} label="" color={color} trimmed={entry.thoughtsTrimmed} translatedFrom={entry.thoughtsTranslatedFrom} />
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}

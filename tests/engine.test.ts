@@ -232,3 +232,32 @@ describe("thought translation (display only)", () => {
     expect(s.callLog.some((c) => c.purpose === "translation")).toBe(false);
   });
 });
+
+describe("written thoughts", () => {
+  it("are required, stored for every response, and never reach any prompt", async () => {
+    const g = await mk();
+    for (let r = 1; r <= 12; r++) {
+      await advance(g.gameId, { roundNumber: r, stage: "COMMUNICATION" });
+      await advance(g.gameId, { roundNumber: r, stage: "DECISION" });
+    }
+    const s = (await getStore().get(g.gameId))!;
+    for (const r of s.rounds) {
+      for (const k of ["playerA", "playerB"] as const) {
+        expect(r.communication![k].writtenThoughts).toBeTruthy();
+        expect(r.decisions[k].writtenThoughts).toBeTruthy();
+      }
+    }
+    const prompts = s.callLog.filter((c) => !c.purpose).map((c) => c.userPrompt).join("\n");
+    expect(prompts).not.toContain("what happens to Mom");
+    expect(prompts).not.toContain("trusting that we both keep");
+  });
+
+  it("retries a response without thoughts instead of accepting it", async () => {
+    const g = await mk();
+    await advance(g.gameId, { roundNumber: 1, stage: "COMMUNICATION" });
+    vi.spyOn(MockPlayer.prototype, "complete").mockResolvedValue({ rawText: '{"action":"SILENT"}', reasoning: null, servedModel: "m", usage: null });
+    await expect(advance(g.gameId, { roundNumber: 1, stage: "DECISION" })).rejects.toMatchObject({ code: "stage_incomplete" });
+    const s = (await getStore().get(g.gameId))!;
+    expect(s.callLog.filter((c) => c.stage === "DECISION" && !c.ok).every((c) => /thoughts/i.test(c.error ?? ""))).toBe(true);
+  });
+});

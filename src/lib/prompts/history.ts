@@ -15,7 +15,7 @@ import {
   type PromptContext,
 } from "./shared";
 
-export const HISTORY_USER_PROMPT_VERSION = "history-user-v5";
+export const HISTORY_USER_PROMPT_VERSION = "history-user-v6";
 
 function yearsShort(n: number) {
   return n === 1 ? "1 year" : `${n} years`;
