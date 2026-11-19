@@ -36,33 +36,32 @@ export function SuspectColumn({
   const color = providerColor(p.provider);
   return (
     <div className="flex min-w-0 flex-col gap-5">
-      <div className="flex items-center gap-3 font-display text-sm uppercase tracking-[0.2em]" style={{ color }}>
+      <div className="flex items-center gap-3 font-display text-xl font-bold uppercase tracking-wide" style={{ color }}>
         <Avatar provider={p.provider} name={p.name} size={32} />
         {p.name}
-        <span className="font-mono text-[10px] normal-case tracking-normal text-dim">{t.as(p.persona.name)}</span>
+        <span className="font-sans text-xs font-normal normal-case tracking-normal text-dim">{t.as(p.persona.name)}</span>
       </div>
       {message ? (
         <>
           <ThoughtBlock entry={message} label={t.thoughtsBefore} color={color} animate={animate.message} />
           <div className={animate.message ? "rise" : ""} style={{ animationDelay: "0.6s" }}>
-            <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-dim">{t.messageTo(other.name)}</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-dim">{t.messageTo(other.name)}</div>
             <p
-              className="mt-1.5 whitespace-pre-wrap border border-edge bg-ink/70 p-4 font-mono text-sm leading-relaxed text-zinc-200"
-              style={{ borderLeftColor: color, borderLeftWidth: 2 }}
+              className="mt-2 whitespace-pre-wrap border-y border-edge py-3 font-mono text-[15px] leading-relaxed text-tube"
             >
               “{message.message}”
             </p>
             {showLeaning && message.privateLeaning && (
-              <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-dim">{t.leaning(message.privateLeaning === "CONFESS" ? t.confess : t.deny)}</div>
+              <div className="mt-1.5 text-xs text-dim">{t.leaning(message.privateLeaning === "CONFESS" ? t.confess : t.deny)}</div>
             )}
           </div>
         </>
       ) : pending === "writing" ? (
         <Thinking label={t.writing} />
       ) : pending === "sealed" ? (
-        <p className="font-mono text-xs text-dim">{t.sealedWaiting}</p>
+        <p className="text-sm text-dim">{t.sealedWaiting}</p>
       ) : (
-        <p className="font-mono text-xs text-dim">{t.noMessage}</p>
+        <p className="text-sm text-dim">{t.noMessage}</p>
       )}
       {after ? (
         <ThoughtBlock entry={after} label={t.thoughtsAfter(other.name)} color={color} animate={animate.after} />
@@ -70,7 +69,7 @@ export function SuspectColumn({
         <Thinking label={t.deciding} />
       ) : null}
       {statement && (
-        <div className={`flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-dim ${animate.statement ? "rise" : ""}`}>
+        <div className={`flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-dim ${animate.statement ? "rise" : ""}`}>
           {t.statementToPolice} <ActionBadge action={statement.action} />
           <span>· {statement.prisonYears} {t.yrs}</span>
         </div>
@@ -90,17 +89,18 @@ export function EarlierRounds({ rounds, players, memoryStartRound }: { rounds: R
     <div className="space-y-3">
       {sorted.map((r) => (
         <div key={r.roundNumber}>
-          <details open className="group border border-edge bg-panel/50">
-            <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-5 py-3 hover:bg-panel">
-              <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-zinc-300">
-                <span className="mr-2 text-dim group-open:hidden">▸</span>
-                <span className="mr-2 hidden text-dim group-open:inline">▾</span>
+          <details open className="group border-t border-edge">
+            <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 py-4 hover:text-tube">
+              <span className="inline-flex items-center gap-3 font-display text-lg font-bold uppercase tracking-wide text-fog">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden className="text-dim transition-transform group-open:rotate-90">
+                  <path d="M9 5l7 7-7 7" />
+                </svg>
                 {t.roundN(r.roundNumber)} · {caseTitle(r, lang)}
                 <span className={`ml-2 ${r.phase === "HISTORY_AWARE" ? "text-lamp" : "text-dim"}`}>
                   · {r.phase === "HISTORY_AWARE" ? t.historyAwareShort : t.independentShort}
                 </span>
               </span>
-              <span className="flex items-center gap-2 font-mono text-[11px] text-dim">
+              <span className="flex items-center gap-2 text-sm text-dim">
                 <Avatar provider={pa.provider} name={pa.name} size={20} />
                 <span style={{ color: providerColor(pa.provider) }}>{pa.name}</span>
                 <ActionBadge action={r.decisions.playerA.action} />
@@ -112,13 +112,13 @@ export function EarlierRounds({ rounds, players, memoryStartRound }: { rounds: R
                 </span>
               </span>
             </summary>
-            <div className="grid gap-x-8 gap-y-6 border-t border-edge p-5 md:grid-cols-2">
+            <div className="grid gap-x-12 gap-y-8 pb-8 pt-2 md:grid-cols-2">
               <SuspectColumn p={pa} other={pb} message={r.communication?.playerA} after={r.decisions.playerA} statement={r.decisions.playerA} />
               <SuspectColumn p={pb} other={pa} message={r.communication?.playerB} after={r.decisions.playerB} statement={r.decisions.playerB} />
             </div>
           </details>
           {r.roundNumber === memoryStartRound && (
-            <div className="mt-3 border-t border-lamp/40 pt-2 font-mono text-[10px] uppercase tracking-[0.3em] text-lamp">
+            <div className="mb-2 border-t border-lamp/50 pt-2 text-xs text-lamp">
               {t.historyIntroducedFrom}
             </div>
           )}

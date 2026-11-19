@@ -9,7 +9,7 @@ import { ActionBadge, providerColor } from "./ui";
 export function RoundDetail({ round, players }: { round: RoundResult; players: PlayerState[] }) {
   const [a, b] = players;
   return (
-    <div className="grid gap-x-8 gap-y-6 bg-ink/70 p-5 md:grid-cols-2">
+    <div className="grid gap-x-12 gap-y-8 bg-panel px-5 py-6 md:grid-cols-2">
       <SuspectColumn p={a} other={b} message={round.communication?.playerA} after={round.decisions.playerA} statement={round.decisions.playerA} showLeaning />
       <SuspectColumn p={b} other={a} message={round.communication?.playerB} after={round.decisions.playerB} statement={round.decisions.playerB} showLeaning />
     </div>
@@ -21,11 +21,11 @@ export function HistoryTable({ rounds, players, memoryStartRound }: { rounds: Ro
   const t = useT();
   const lang = useLang();
   const [a, b] = players;
-  if (rounds.length === 0) return <p className="font-mono text-xs text-dim">{t.noCompleted}</p>;
+  if (rounds.length === 0) return <p className="text-sm text-dim">{t.noCompleted}</p>;
   return (
-    <div className="overflow-x-auto border border-edge">
-      <table className="w-full min-w-[560px] text-left font-mono text-xs">
-        <thead className="bg-panel text-[10px] uppercase tracking-[0.2em] text-dim">
+    <div className="overflow-x-auto border-y border-edge">
+      <table className="w-full min-w-[560px] text-left text-sm">
+        <thead className="text-[11px] font-semibold uppercase tracking-[0.14em] text-dim">
           <tr>
             <th className="px-3 py-2">{t.round}</th>
             <th className="px-3 py-2">{t.caseLabel}</th>
@@ -40,17 +40,17 @@ export function HistoryTable({ rounds, players, memoryStartRound }: { rounds: Ro
             <Fragment key={r.roundNumber}>
               {r.roundNumber === memoryStartRound && (
                 <tr>
-                  <td colSpan={6} className="border-t border-lamp/40 bg-lamp/5 px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-lamp">
+                  <td colSpan={6} className="border-t border-lamp/50 px-3 py-1.5 text-xs text-lamp">
                     {t.historyIntroduced}
                   </td>
                 </tr>
               )}
               <tr
                 onClick={() => setOpen(open === r.roundNumber ? null : r.roundNumber)}
-                className="cursor-pointer border-t border-edge hover:bg-panel"
+                className="cursor-pointer border-t border-edge hover:bg-panel focus-visible:bg-panel"
               >
-                <td className="px-3 py-2 text-dim">{String(r.roundNumber).padStart(2, "0")}</td>
-                <td className="px-3 py-2 text-zinc-400">{caseTitle(r, lang)}</td>
+                <td className="px-3 py-2.5 font-display text-base font-bold text-dim">{String(r.roundNumber).padStart(2, "0")}</td>
+                <td className="px-3 py-2.5 text-fog">{caseTitle(r, lang)}</td>
                 <td className="px-3 py-2"><ActionBadge action={r.decisions.playerA.action} /></td>
                 <td className="px-3 py-2"><ActionBadge action={r.decisions.playerB.action} /></td>
                 <td className="px-3 py-2 text-right">{r.decisions.playerA.prisonYears}</td>

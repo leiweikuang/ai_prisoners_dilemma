@@ -8,28 +8,19 @@ import { normalizePayoff } from "@/lib/game/payoff";
 import { analyseGame, type PlayerAnalysis } from "@/lib/analysis/metrics";
 import { CumulativeChart } from "@/components/CumulativeChart";
 import { HistoryTable } from "@/components/HistoryTable";
-import { Avatar, pct, providerColor, Thinking } from "@/components/ui";
-
-function Stat({ label, value, sub }: { label: string; value: React.ReactNode; sub?: string }) {
-  return (
-    <div className="border border-edge bg-panel/70 p-4">
-      <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-dim">{label}</div>
-      <div className="mt-1 font-display text-3xl">{value}</div>
-      {sub && <div className="mt-1 font-mono text-[11px] text-dim">{sub}</div>}
-    </div>
-  );
-}
+import { ActionBadge, Avatar, pct, providerColor, Thinking } from "@/components/ui";
+import { IconBack, IconDownload, IconRestart } from "@/components/icons";
 
 type Row = [string, (a: PlayerAnalysis) => React.ReactNode, string?];
 
 function MetricTable({ title, rows, a, b, names, note, metricLabel }: { title: string; rows: Row[]; a: PlayerAnalysis; b: PlayerAnalysis; names: [string, string]; note?: string; metricLabel: string }) {
   return (
-    <section className="mt-10">
-      <h2 className="font-display text-xl uppercase tracking-[0.15em]">{title}</h2>
+    <section className="mt-14">
+      <h2 className="font-display text-3xl font-bold uppercase tracking-wide text-tube">{title}</h2>
       {note && <p className="mt-1 max-w-3xl text-sm text-dim">{note}</p>}
-      <div className="mt-3 overflow-x-auto border border-edge">
-        <table className="w-full min-w-[520px] font-mono text-xs">
-          <thead className="bg-panel text-[10px] uppercase tracking-[0.2em] text-dim">
+      <div className="mt-4 overflow-x-auto border-y border-edge">
+        <table className="w-full min-w-[520px] text-sm">
+          <thead className="text-[11px] font-semibold uppercase tracking-[0.14em] text-dim">
             <tr>
               <th className="px-3 py-2 text-left">{metricLabel}</th>
               <th className="px-3 py-2 text-right">{names[0]}</th>
@@ -39,12 +30,12 @@ function MetricTable({ title, rows, a, b, names, note, metricLabel }: { title: s
           <tbody>
             {rows.map(([label, f, hint]) => (
               <tr key={label} className="border-t border-edge">
-                <td className="px-3 py-2 text-zinc-300">
+                <td className="px-3 py-2.5 text-fog">
                   {label}
-                  {hint && <div className="text-[10px] text-dim">{hint}</div>}
+                  {hint && <div className="text-xs text-dim">{hint}</div>}
                 </td>
-                <td className="px-3 py-2 text-right">{f(a)}</td>
-                <td className="px-3 py-2 text-right">{f(b)}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums text-tube">{f(a)}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums text-tube">{f(b)}</td>
               </tr>
             ))}
           </tbody>
@@ -104,90 +95,141 @@ export function ResultsView({ id }: { id: string }) {
   const ai = game.analysis;
   const aiCurrent = !!ai && ai.roundsCovered === game.rounds.length;
 
+  /** One cell of the outcome matrix: how often it happened and what it cost each side. */
+  const cell = (count: number, ya: number, yb: number, tone: "both-testify" | "both-silent" | "a" | "b") => (
+    <td className={`border border-edge p-5 align-top ${tone === "both-silent" ? "bg-deny/[0.04]" : tone === "both-testify" ? "bg-oxblood/25" : "bg-panel"}`}>
+      <div className="font-display text-6xl font-extrabold leading-none text-tube">{count}</div>
+      <div className="mt-2 text-sm text-dim">
+        {pa.name} {ya} · {pb.name} {yb} {t.yrs}
+      </div>
+    </td>
+  );
+
   return (
     <LangContext.Provider value={lang}>
-    <main className="mx-auto w-full max-w-6xl px-4 py-8 md:py-12">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link href={`/game/${id}`} className="font-mono text-[10px] uppercase tracking-[0.4em] text-dim hover:text-lamp">{t.back}</Link>
-        <a href={`/api/games/${id}/export`} className="border border-edge px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-dim hover:text-zinc-200">{t.exportLog}</a>
-      </div>
-      <h1 className="mt-3 font-display text-4xl uppercase tracking-[0.12em] md:text-6xl">{done ? t.finalResults : t.interimResults}</h1>
-      <p className="mt-2 font-mono text-xs text-dim">
+    <main className="mx-auto w-full max-w-[1500px] px-4 pb-16 pt-5 md:px-8">
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <Link href={`/game/${id}`} className="inline-flex items-center gap-2 text-sm text-dim hover:text-fog">
+          <IconBack />
+          {t.back}
+        </Link>
+        <a href={`/api/games/${id}/export`} className="console-key inline-flex h-9 items-center gap-2 px-3 text-sm">
+          <IconDownload size={15} />
+          {t.exportLog}
+        </a>
+      </header>
+
+      <h1 className="mt-6 font-display text-6xl font-extrabold uppercase leading-[0.9] tracking-wide text-tube md:text-8xl">{done ? t.finalResults : t.interimResults}</h1>
+      <p className="mt-3 text-fog">
         {t.resultsMeta(game.rounds.length, game.totalRounds, game.memoryStartRound)} · {pa.name} ({pa.model}) vs {pb.name} ({pb.model})
       </p>
 
-      {/* DeepSeek's post-game write-up */}
-      <section className="mt-8 border border-edge bg-panel/70 p-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-display text-xl uppercase tracking-[0.15em]">{t.analysisTitle}</h2>
+      {/* Both rooms, final time served */}
+      <div className="mt-8 grid grid-cols-1 bg-edge md:grid-cols-2 md:gap-px">
+        {[[pa, A], [pb, B]].map(([p, s]) => {
+          const pl = p as typeof pa, st = s as PlayerAnalysis;
+          return (
+            <section key={pl.id} data-lit="true" className="room flex flex-wrap items-center gap-6 px-6 pb-7 pt-12">
+              <Avatar provider={pl.provider} name={pl.name} size={112} className="relative z-10" />
+              <div className="relative z-10 min-w-0 flex-1">
+                <h2 className="flex flex-wrap items-baseline gap-x-3 leading-none">
+                  <span className="font-plate text-lg font-semibold uppercase tracking-[0.18em] text-ink/75">{t.room(pl.id)}</span>
+                  <span className="font-display text-4xl font-extrabold uppercase tracking-wide text-ink">{pl.name}</span>
+                </h2>
+                <p className="mt-3 font-display text-5xl font-extrabold uppercase leading-none text-ink">
+                  {st.totalYears} <span className="text-2xl">{t.yearsServed(st.totalYears)}</span>
+                </p>
+                <p className="mt-2 text-sm text-ink/80">
+                  {t.confessions} {st.confessions} ({pct(st.confessionRate)}) · {t.denials} {st.denials} ({pct(st.denialRate)})
+                </p>
+              </div>
+            </section>
+          );
+        })}
+      </div>
+
+      {/* DeepSeek's post-game write-up: the observer's report */}
+      <section className="console px-6 py-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-plate text-sm font-semibold uppercase tracking-[0.3em] text-lamp">{t.analysisTitle}</h2>
           {ai && aiStatus.state !== "running" && (
-            <button onClick={() => runAnalysis(true)} className="font-mono text-[10px] uppercase tracking-[0.25em] text-dim hover:text-lamp">
+            <button onClick={() => runAnalysis(true)} className="console-key inline-flex h-8 items-center gap-2 px-3 text-sm">
+              <IconRestart size={14} />
               {t.analysisRerun}
             </button>
           )}
         </div>
         {aiStatus.state === "running" ? (
-          <div className="mt-3">
+          <div className="mt-4">
             <Thinking label={t.analysisRunning} />
           </div>
         ) : ai ? (
           <>
-            <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">{ai.summary[lang]}</p>
-            <p className="mt-3 text-xs text-zinc-600">
+            <p className="mt-4 max-w-[70ch] whitespace-pre-wrap text-[17px] leading-relaxed text-tube">{ai.summary[lang]}</p>
+            <p className="mt-4 text-xs text-dim">
               {t.analysisNote(ai.model)}
               {!aiCurrent && ` ${t.analysisStale(ai.roundsCovered)}`}
             </p>
           </>
         ) : (
-          <p className="mt-3 text-sm text-dim">{aiStatus.message ? t.analysisFailed(aiStatus.message) : t.analysisNone}</p>
+          <p className="mt-4 text-sm text-dim">{aiStatus.message ? t.analysisFailed(aiStatus.message) : t.analysisNone}</p>
         )}
         {ai && aiStatus.state === "error" && <p className="mt-2 text-xs text-confess">{t.analysisFailed(aiStatus.message ?? "")}</p>}
       </section>
 
-      {/* Overall */}
-      <section className="mt-8 grid gap-3 md:grid-cols-2">
-        {[[pa, A], [pb, B]].map(([p, s]) => {
-          const pl = p as typeof pa, st = s as PlayerAnalysis;
-          return (
-            <div key={pl.id} className="relative border border-edge bg-panel/80 p-5">
-              <div className="absolute inset-x-0 top-0 h-0.5" style={{ background: providerColor(pl.provider) }} />
-              <div className="flex items-center gap-3 font-display text-2xl uppercase tracking-wide" style={{ color: providerColor(pl.provider) }}>
-                <Avatar provider={pl.provider} name={pl.name} size={52} />
-                {pl.name}
-              </div>
-              <div className="mt-2 font-display text-6xl">{st.totalYears}<span className="ml-2 font-mono text-sm text-dim">{t.totalYears}</span></div>
-              <div className="mt-3 grid grid-cols-2 gap-2 font-mono text-xs text-zinc-300">
-                <span>{t.confessions}: {st.confessions} ({pct(st.confessionRate)})</span>
-                <span>{t.denials}: {st.denials} ({pct(st.denialRate)})</span>
-              </div>
-            </div>
-          );
-        })}
-      </section>
-      <section className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label={t.mutualConfessions} value={outcomes.mutualConfessions} sub={`${pay.bothConfessA} / ${pay.bothConfessB} ${t.yrs}`} />
-        <Stat label={t.mutualDenials} value={outcomes.mutualDenials} sub={`${pay.bothDenyA} / ${pay.bothDenyB} ${t.yrs}`} />
-        <Stat label={t.onlyConfessed(pa.name)} value={outcomes.unilateralA} sub={`${pay.AConfessBDenyA} / ${pay.AConfessBDenyB} ${t.yrs}`} />
-        <Stat label={t.onlyConfessed(pb.name)} value={outcomes.unilateralB} sub={`${pay.ADenyBConfessA} / ${pay.ADenyBConfessB} ${t.yrs}`} />
+      {/* What happened, case by case: the outcome matrix */}
+      <section className="mt-14">
+        <h2 className="font-display text-3xl font-bold uppercase tracking-wide text-tube">{t.outcomeMatrix}</h2>
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full min-w-[640px] border-collapse text-left">
+            <thead>
+              <tr>
+                <th className="w-48 p-3" />
+                <th className="p-3 text-sm font-semibold" style={{ color: providerColor(pb.provider) }}>
+                  {pb.name} · <ActionBadge action="CONFESS" />
+                </th>
+                <th className="p-3 text-sm font-semibold" style={{ color: providerColor(pb.provider) }}>
+                  {pb.name} · <ActionBadge action="DENY" />
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row" className="p-3 text-sm font-semibold" style={{ color: providerColor(pa.provider) }}>
+                  {pa.name} · <ActionBadge action="CONFESS" />
+                </th>
+                {cell(outcomes.mutualConfessions, pay.bothConfessA, pay.bothConfessB, "both-testify")}
+                {cell(outcomes.unilateralA, pay.AConfessBDenyA, pay.AConfessBDenyB, "a")}
+              </tr>
+              <tr>
+                <th scope="row" className="p-3 text-sm font-semibold" style={{ color: providerColor(pa.provider) }}>
+                  {pa.name} · <ActionBadge action="DENY" />
+                </th>
+                {cell(outcomes.unilateralB, pay.ADenyBConfessA, pay.ADenyBConfessB, "b")}
+                {cell(outcomes.mutualDenials, pay.bothDenyA, pay.bothDenyB, "both-silent")}
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
-      <section className="mt-10">
-        <h2 className="font-display text-xl uppercase tracking-[0.15em]">{t.cumulativeYears}</h2>
-        <div className="mt-3 border border-edge bg-panel/60 p-4">
+      <section className="mt-14">
+        <h2 className="font-display text-3xl font-bold uppercase tracking-wide text-tube">{t.cumulativeYears}</h2>
+        <div className="mt-5 border-y border-edge py-5">
           <CumulativeChart rounds={game.rounds} players={game.players} memoryStartRound={game.memoryStartRound} />
         </div>
       </section>
 
       {/* Phase comparison */}
-      {hasBothPhases && <section className="mt-10">
-        <h2 className="font-display text-xl uppercase tracking-[0.15em]">{t.phaseCompare}</h2>
+      {hasBothPhases && <section className="mt-14">
+        <h2 className="font-display text-3xl font-bold uppercase tracking-wide text-tube">{t.phaseCompare}</h2>
         <p className="mt-1 text-sm text-dim">{t.phaseCompareNote(game.memoryStartRound)}</p>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           {(["INDEPENDENT", "HISTORY_AWARE"] as const).map((ph) => {
             const o = analysis.outcomesByPhase[ph];
             return (
-              <div key={ph} className="border border-edge bg-panel/70 p-4 font-mono text-xs">
-                <div className={`text-[10px] uppercase tracking-[0.25em] ${ph === "HISTORY_AWARE" ? "text-lamp" : "text-dim"}`}>
+              <div key={ph} className="border-y border-edge py-4 text-sm">
+                <div className={`font-display text-lg font-bold uppercase ${ph === "HISTORY_AWARE" ? "text-lamp" : "text-fog"}`}>
                   {ph === "INDEPENDENT" ? t.phase1 : t.phase2}
                 </div>
                 <table className="mt-2 w-full">
@@ -260,7 +302,7 @@ export function ResultsView({ id }: { id: string }) {
       />
 
       <section className="mt-10">
-        <h2 className="mb-3 font-display text-xl uppercase tracking-[0.15em]">{t.fullTranscript}</h2>
+        <h2 className="mb-4 font-display text-3xl font-bold uppercase tracking-wide text-tube">{t.fullTranscript}</h2>
         <HistoryTable rounds={game.rounds} players={game.players} memoryStartRound={game.memoryStartRound} />
       </section>
 

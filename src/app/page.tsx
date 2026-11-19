@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Avatar, LanguageToggle, providerColor } from "@/components/ui";
+import { Avatar, LanguageToggle } from "@/components/ui";
+import { IconPlay } from "@/components/icons";
 import type { Lang, PayoffMatrix } from "@/lib/game/types";
 import { LangContext, STRINGS } from "@/lib/i18n";
 import { profileFor } from "@/lib/profiles";
@@ -36,7 +37,7 @@ function PayoffInput({ label, value, onChange }: { label: string; value: number;
       step={1}
       value={value}
       onChange={(event) => onChange(Number(event.target.value))}
-      className="w-full border border-edge bg-ink px-2 py-1 text-center font-mono text-sm outline-none focus:border-lamp"
+      className="w-full border border-edge bg-ink/80 px-2 py-1.5 text-center text-sm tabular-nums text-tube outline-none focus:border-lamp"
     />
   );
 }
@@ -152,176 +153,169 @@ export default function SetupPage() {
     const model = slot === "A" ? modelA : modelB;
     const setModel = slot === "A" ? setAModel : setBModel;
     const p = prov(provider);
-    const color = providerColor(provider);
     const isHuman = provider === "human";
     const otherProvider = slot === "A" ? bProvider : aProvider;
     const shownName = isHuman ? humanName.trim() || "…" : p?.displayName ?? "…";
+    const field = "mt-1.5 w-full border border-edge bg-ink/80 px-3 py-2.5 text-sm text-tube outline-none focus:border-lamp";
+    const label = "block text-[11px] font-semibold uppercase tracking-[0.14em] text-dim";
     return (
-      <div className="relative border border-edge bg-panel/80 p-6" style={{ boxShadow: `inset 0 1px 0 ${color}33` }}>
-        <div className="absolute left-0 top-0 h-full w-0.5" style={{ background: color }} />
-        <div className="font-mono text-[11px] uppercase tracking-[0.3em] text-dim">{t.suspect(slot)}</div>
-        <div className="mt-2 flex items-center gap-4 font-display text-3xl uppercase tracking-wide" style={{ color }}>
-          <Avatar provider={provider} name={isHuman ? humanName.trim() || "?" : p?.displayName ?? "?"} size={64} />
-          <span>
-            {shownName}
-            <span className="block font-mono text-[11px] normal-case tracking-normal text-dim">
-              {t.inCustodyAs(isHuman ? humanName.trim() || "…" : provider === "mock" ? (slot === "A" ? "Morgan" : "Riley") : profileFor(provider).personaName)}
-            </span>
-          </span>
+      <section aria-label={t.room(slot)} data-lit={!!p?.available} className="room flex min-h-[460px] flex-col">
+        <div className="flex justify-center pt-4">
+          <div className="tube w-2/5" />
         </div>
-        <label className="mt-5 block font-mono text-[11px] uppercase tracking-[0.2em] text-dim">{t.provider}</label>
-        <select
-          value={provider}
-          onChange={(e) => {
-            setProvider(e.target.value);
-            setModel(prov(e.target.value)?.defaultModel ?? "");
-          }}
-          className="mt-1 w-full border border-edge bg-ink px-3 py-2 font-mono text-sm outline-none focus:border-lamp"
-        >
-          {providers.map((c) => (
-            <option key={c.id} value={c.id} disabled={!c.available || (c.id === "human" && otherProvider === "human")}>
-              {c.label}
-              {c.available ? "" : ` — ${t.notConfigured}`}
-            </option>
-          ))}
-        </select>
-        {isHuman ? (
-          <>
-            <label className="mt-4 block font-mono text-[11px] uppercase tracking-[0.2em] text-dim">{t.yourName}</label>
-            <input
-              value={humanName}
-              onChange={(e) => setHumanName(e.target.value)}
-              maxLength={24}
-              placeholder="Jerry"
-              className="mt-1 w-full border border-edge bg-ink px-3 py-2 font-mono text-sm outline-none focus:border-lamp"
-            />
-            <p className="mt-2 text-xs text-dim">{t.yourNameHint}</p>
-          </>
-        ) : (
-          <>
-            <label className="mt-4 block font-mono text-[11px] uppercase tracking-[0.2em] text-dim">{t.modelId}</label>
+        <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-4 px-6 py-6 text-center">
+          <Avatar provider={provider} name={isHuman ? humanName.trim() || "?" : p?.displayName ?? "?"} size={128} />
+          <div>
+            <h2 className="flex flex-wrap items-baseline justify-center gap-x-3 leading-none">
+              <span className="font-plate text-lg font-semibold uppercase tracking-[0.18em] text-ink/80">{t.room(slot)}</span>
+              <span className="font-display text-4xl font-extrabold uppercase tracking-wide text-ink">{shownName}</span>
+            </h2>
+            <p className="mt-1.5 text-sm text-ink/75">
+              {t.inCustodyAs(isHuman ? humanName.trim() || "…" : provider === "mock" ? (slot === "A" ? "Morgan" : "Riley") : profileFor(provider).personaName)}
+            </p>
+          </div>
+        </div>
+        <div className="relative z-10 grid gap-4 border-t border-edge bg-ink/60 px-6 py-5 sm:grid-cols-2">
+          <div>
+            <label htmlFor={`provider-${slot}`} className={label}>
+              {t.provider}
+            </label>
             <select
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              disabled={!p}
-              className="mt-1 w-full border border-edge bg-ink px-3 py-2 font-mono text-sm outline-none focus:border-lamp"
+              id={`provider-${slot}`}
+              value={provider}
+              onChange={(e) => {
+                setProvider(e.target.value);
+                setModel(prov(e.target.value)?.defaultModel ?? "");
+              }}
+              className={field}
             >
-              {(p?.models ?? []).map((m) => (
-                <option key={m} value={m}>
-                  {m}
+              {providers.map((c) => (
+                <option key={c.id} value={c.id} disabled={!c.available || (c.id === "human" && otherProvider === "human")}>
+                  {c.label}
+                  {c.available ? "" : ` — ${t.notConfigured}`}
                 </option>
               ))}
             </select>
-          </>
-        )}
-        {p && !p.available && (
-          <p className="mt-3 text-xs text-confess">{t.keyMissing}</p>
-        )}
-      </div>
+          </div>
+          {isHuman ? (
+            <div>
+              <label htmlFor={`name-${slot}`} className={label}>
+                {t.yourName}
+              </label>
+              <input id={`name-${slot}`} value={humanName} onChange={(e) => setHumanName(e.target.value)} maxLength={24} placeholder="Jerry" className={field} />
+              <p className="mt-1.5 text-xs text-dim">{t.yourNameHint}</p>
+            </div>
+          ) : (
+            <div>
+              <label htmlFor={`model-${slot}`} className={label}>
+                {t.modelId}
+              </label>
+              <select id={`model-${slot}`} value={model} onChange={(e) => setModel(e.target.value)} disabled={!p} className={field}>
+                {(p?.models ?? []).map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {p && !p.available && <p className="text-xs text-confess sm:col-span-2">{t.keyMissing}</p>}
+        </div>
+      </section>
     );
   };
 
+  const numField = "mt-1.5 w-full border border-edge bg-ink/80 px-3 py-2.5 tabular-nums text-tube outline-none focus:border-lamp";
+  const numLabel = "flex min-h-[2.6rem] items-end text-[11px] font-semibold uppercase tracking-[0.14em] text-dim";
   return (
     <LangContext.Provider value={lang}>
-    <main className="mx-auto w-full max-w-5xl px-4 py-12 md:py-20">
-      <div className="flex justify-end">
-        <LanguageToggle value={lang} onChange={setLang} />
-      </div>
-      <header className="mt-4 text-center">
-        <div className="font-mono text-[11px] uppercase tracking-[0.5em] text-lamp flicker">{t.setupKicker}</div>
-        <h1 className="mt-4 font-display text-5xl uppercase tracking-[0.12em] md:text-7xl">{t.title}</h1>
-        <p className="mx-auto mt-5 max-w-2xl text-dim">{t.setupIntro}</p>
-        <p className="mx-auto mt-2 max-w-2xl text-xs text-zinc-600">{t.languageNote}</p>
-      </header>
-
-      <section className="mt-12 grid gap-4 md:grid-cols-2">
-        {slotPanel("A")}
-        {slotPanel("B")}
-      </section>
-
-      <section className="mt-4 grid gap-4 border border-edge bg-panel/80 p-6 md:grid-cols-3">
-        <div>
-          <label className="block font-mono text-[11px] uppercase tracking-[0.2em] text-dim">{t.numRounds}</label>
-          <input
-            type="number"
-            min={1}
-            max={100}
-            value={rounds}
-            onChange={(e) => setRounds(Number(e.target.value))}
-            className="mt-1 w-full border border-edge bg-ink px-3 py-2 font-mono outline-none focus:border-lamp"
-          />
-        </div>
-        <div>
-          <label className="block font-mono text-[11px] uppercase tracking-[0.2em] text-dim">{t.historyFrom}</label>
-          <input
-            type="number"
-            min={1}
-            max={rounds + 1}
-            value={memory}
-            onChange={(e) => setMemory(Number(e.target.value))}
-            className="mt-1 w-full border border-edge bg-ink px-3 py-2 font-mono outline-none focus:border-lamp"
-          />
-        </div>
-        <div className="font-mono text-xs leading-relaxed text-dim">
-          <div className="uppercase tracking-[0.2em]">{t.sentencing}</div>
-          <div className="mt-2 grid grid-cols-[1fr_4rem_4rem] gap-2 items-center">
-            <span>{t.decisionPair}</span>
-            <span className="text-center">A</span>
-            <span className="text-center">B</span>
-            <span>{t.bothTestifyLabel}</span>
-            <PayoffInput label="A: both testify" value={payoff.bothConfessA} onChange={(v) => setPayoff((p) => ({ ...p, bothConfessA: v }))} />
-            <PayoffInput label="B: both testify" value={payoff.bothConfessB} onChange={(v) => setPayoff((p) => ({ ...p, bothConfessB: v }))} />
-            <span>{t.aTestifyBSilent}</span>
-            <PayoffInput label="A: testifies, B is silent" value={payoff.AConfessBDenyA} onChange={(v) => setPayoff((p) => ({ ...p, AConfessBDenyA: v }))} />
-            <PayoffInput label="B: is silent, A testifies" value={payoff.AConfessBDenyB} onChange={(v) => setPayoff((p) => ({ ...p, AConfessBDenyB: v }))} />
-            <span>{t.aSilentBTestify}</span>
-            <PayoffInput label="A: is silent, B testifies" value={payoff.ADenyBConfessA} onChange={(v) => setPayoff((p) => ({ ...p, ADenyBConfessA: v }))} />
-            <PayoffInput label="B: testifies, A is silent" value={payoff.ADenyBConfessB} onChange={(v) => setPayoff((p) => ({ ...p, ADenyBConfessB: v }))} />
-            <span>{t.bothSilentLabel}</span>
-            <PayoffInput label="A: both silent" value={payoff.bothDenyA} onChange={(v) => setPayoff((p) => ({ ...p, bothDenyA: v }))} />
-            <PayoffInput label="B: both silent" value={payoff.bothDenyB} onChange={(v) => setPayoff((p) => ({ ...p, bothDenyB: v }))} />
+      <main className="mx-auto w-full max-w-[1500px] px-4 pb-16 pt-5 md:px-8">
+        <header className="flex flex-wrap items-start justify-between gap-6">
+          <div className="max-w-3xl">
+            <h1 className="font-display text-6xl font-extrabold uppercase leading-[0.9] tracking-wide text-tube md:text-8xl">{t.title}</h1>
+            <p className="mt-4 text-lg leading-relaxed text-fog">{t.setupIntro}</p>
+            <p className="mt-2 text-sm text-dim">{t.languageNote}</p>
           </div>
+          <LanguageToggle value={lang} onChange={setLang} />
+        </header>
+
+        {/* The two interview rooms, with the case file on the partition between them */}
+        <div className="mt-10 grid grid-cols-1 bg-edge lg:grid-cols-[1fr_22rem_1fr]">
+          {slotPanel("A")}
+
+          <aside className="flex flex-col gap-6 bg-ink px-6 py-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="rounds" className={numLabel}>
+                  {t.numRounds}
+                </label>
+                <input id="rounds" type="number" min={1} max={100} value={rounds} onChange={(e) => setRounds(Number(e.target.value))} className={numField} />
+              </div>
+              <div>
+                <label htmlFor="memory" className={numLabel}>
+                  {t.historyFrom}
+                </label>
+                <input id="memory" type="number" min={1} max={rounds + 1} value={memory} onChange={(e) => setMemory(Number(e.target.value))} className={numField} />
+              </div>
+            </div>
+            <div>
+              <h2 className="font-plate text-sm font-semibold uppercase tracking-[0.3em] text-fog">{t.sentencing}</h2>
+              <div className="mt-3 grid grid-cols-[1fr_3.75rem_3.75rem] items-center gap-x-2 gap-y-2 text-sm text-fog">
+                <span className="text-xs text-dim">{t.decisionPair}</span>
+                <span className="text-center font-plate text-xs font-semibold text-dim">A</span>
+                <span className="text-center font-plate text-xs font-semibold text-dim">B</span>
+                <span>{t.bothTestifyLabel}</span>
+                <PayoffInput label="A: both testify" value={payoff.bothConfessA} onChange={(v) => setPayoff((p) => ({ ...p, bothConfessA: v }))} />
+                <PayoffInput label="B: both testify" value={payoff.bothConfessB} onChange={(v) => setPayoff((p) => ({ ...p, bothConfessB: v }))} />
+                <span>{t.aTestifyBSilent}</span>
+                <PayoffInput label="A: testifies, B is silent" value={payoff.AConfessBDenyA} onChange={(v) => setPayoff((p) => ({ ...p, AConfessBDenyA: v }))} />
+                <PayoffInput label="B: is silent, A testifies" value={payoff.AConfessBDenyB} onChange={(v) => setPayoff((p) => ({ ...p, AConfessBDenyB: v }))} />
+                <span>{t.aSilentBTestify}</span>
+                <PayoffInput label="A: is silent, B testifies" value={payoff.ADenyBConfessA} onChange={(v) => setPayoff((p) => ({ ...p, ADenyBConfessA: v }))} />
+                <PayoffInput label="B: testifies, A is silent" value={payoff.ADenyBConfessB} onChange={(v) => setPayoff((p) => ({ ...p, ADenyBConfessB: v }))} />
+                <span>{t.bothSilentLabel}</span>
+                <PayoffInput label="A: both silent" value={payoff.bothDenyA} onChange={(v) => setPayoff((p) => ({ ...p, bothDenyA: v }))} />
+                <PayoffInput label="B: both silent" value={payoff.bothDenyB} onChange={(v) => setPayoff((p) => ({ ...p, bothDenyB: v }))} />
+              </div>
+            </div>
+          </aside>
+
+          {slotPanel("B")}
         </div>
-      </section>
 
-      {store?.onVercel && store.kind === "file" && (
-        <p className="mt-4 border border-confess/50 bg-confess/10 p-3 text-sm text-confess">
-          {t.vercelWarning}
-        </p>
-      )}
-      {error && <p className="mt-4 border border-confess/50 bg-confess/10 p-3 text-sm text-confess">{error}</p>}
-
-      <div className="mt-8 flex justify-center">
-        <button
-          onClick={start}
-          disabled={busy || !modelA || !modelB || ((aProvider === "human" || bProvider === "human") && !humanName.trim())}
-          className="group relative overflow-hidden border border-lamp px-10 py-4 font-display text-xl uppercase tracking-[0.3em] text-lamp transition hover:bg-lamp hover:text-ink disabled:opacity-40"
-        >
-          {busy ? t.opening : t.begin}
-        </button>
-      </div>
-
-      {games.length > 0 && (
-        <section className="mt-16">
-          <h2 className="font-mono text-[11px] uppercase tracking-[0.3em] text-dim">{t.previousFiles}</h2>
-          <ul className="mt-3 divide-y divide-edge border border-edge">
-            {games.map((g) => (
-              <li key={g.gameId}>
-                <Link href={`/game/${g.gameId}`} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 font-mono text-xs hover:bg-panel">
-                  <span className="text-zinc-300">
-                    {g.players.map((p) => `${p.name} (${p.model})`).join(" vs ")}
-                  </span>
-                  <span className="text-dim">
-                    {g.status === "COMPLETED" ? t.completed : t.roundOf(Math.min(g.currentRound, g.totalRounds), g.totalRounds)} ·{" "}
-                    {new Date(g.createdAt).toLocaleString()}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+        {/* The console */}
+        <section className="console flex flex-wrap items-center gap-4 px-6 py-5">
+          <button
+            onClick={start}
+            disabled={busy || !modelA || !modelB || ((aProvider === "human" || bProvider === "human") && !humanName.trim())}
+            data-primary="true"
+            className="console-key inline-flex h-12 items-center gap-2.5 px-7 font-display text-xl font-bold uppercase tracking-[0.08em]"
+          >
+            <IconPlay size={18} />
+            {busy ? t.opening : t.begin}
+          </button>
+          {store?.onVercel && store.kind === "file" && <p className="text-sm text-confess">{t.vercelWarning}</p>}
+          {error && <p className="text-sm text-confess">{error}</p>}
         </section>
-      )}
-    </main>
+
+        {games.length > 0 && (
+          <section className="mt-14">
+            <h2 className="font-display text-2xl font-bold uppercase tracking-wide text-tube">{t.previousFiles}</h2>
+            <ul className="mt-4 divide-y divide-edge border-y border-edge">
+              {games.map((g) => (
+                <li key={g.gameId}>
+                  <Link href={`/game/${g.gameId}`} className="flex flex-wrap items-center justify-between gap-2 px-1 py-3.5 text-sm hover:bg-panel">
+                    <span className="text-fog">{g.players.map((p) => `${p.name} (${p.model})`).join(" vs ")}</span>
+                    <span className="text-xs tabular-nums text-dim">
+                      {g.status === "COMPLETED" ? t.completed : t.roundOf(Math.min(g.currentRound, g.totalRounds), g.totalRounds)} · {new Date(g.createdAt).toLocaleString()}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </main>
     </LangContext.Provider>
   );
 }

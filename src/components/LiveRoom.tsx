@@ -6,9 +6,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { CommunicationEntry, HumanInput, Lang, PlayerState, PublicGameState, RoundResult, Stage } from "@/lib/game/types";
 import { HumanTurn } from "@/components/HumanTurn";
 import { HistoryTable } from "@/components/HistoryTable";
-import { ActionBadge, Avatar, LanguageToggle, providerColor, Thinking, Years } from "@/components/ui";
+import { ActionBadge, Avatar, LanguageToggle, providerColor, ThoughtBlock, Thinking } from "@/components/ui";
+import { IconBack, IconFile, IconForward, IconPause, IconPlay, IconRestart, IconSeal, IconStep } from "@/components/icons";
 import { LangContext, STRINGS } from "@/lib/i18n";
 import { caseTitle as localCaseTitle } from "@/components/Transcript";
+import { scenarioForRound, scenarioTitle } from "@/lib/prompts/scenarios";
 import { EarlierRounds, SuspectColumn } from "@/components/Transcript";
 
 type View = "idle" | "human_message" | "human_decision" | "comm_pending" | "comm_reveal" | "deliberation" | "locked" | "reaction" | "countdown" | "reveal";
@@ -201,7 +203,7 @@ export function LiveView({ id }: { id: string }) {
 
   if (notFound)
     return (
-      <main className="flex flex-1 items-center justify-center font-mono text-dim">
+      <main className="flex flex-1 items-center justify-center gap-2 text-dim">
         {STRINGS.en.notFound} <Link className="ml-2 text-lamp underline" href="/">{STRINGS.en.newExperiment}</Link>
       </main>
     );
@@ -216,7 +218,10 @@ export function LiveView({ id }: { id: string }) {
   const displayRoundNumber = showingLast && lastRound ? lastRound.roundNumber : Math.min(game.currentRound, game.totalRounds);
   const displayPhase = showingLast && lastRound ? lastRound.phase : ip?.phase ?? game.phase;
   const titleSource = showingLast && lastRound ? lastRound : ip;
-  const caseTitle = titleSource ? localCaseTitle(titleSource, lang) : undefined;
+  // Before a round starts, the next case is already known (one case per round number).
+  const caseTitle = titleSource
+    ? localCaseTitle(titleSource, lang)
+    : scenarioTitle(scenarioForRound(Math.min(game.currentRound, game.totalRounds)), lang);
   const messages: { playerA: CommunicationEntry; playerB: CommunicationEntry } | null =
     showingLast ? lastRound?.communication ?? null : ip?.communication ?? null;
   const revealRound = showingLast ? lastRound : undefined;
@@ -273,223 +278,298 @@ export function LiveView({ id }: { id: string }) {
     reveal: t.bannerStatements,
   }[view];
 
-  const card = (p: PlayerState, slot: "A" | "B") => {
+  const midRound = !!ip || !!game.busy || !["idle", "reveal"].includes(view);
+  const stepBusy = active || humanTurn || ["locked", "reaction", "countdown", "comm_reveal"].includes(view);
+
+  /** What each room's glass shows right now: the latest thoughts the viewer may see. */
+  const glassFor = (k: "playerA" | "playerB") => {
+    const after = afterRound?.decisions[k];
+    if (after && (view === "reaction" || view === "countdown" || view === "reveal" || view === "idle")) return { entry: after, label: t.thoughtsAfterShort };
+    const before = messages?.[k];
+    if (before) return { entry: before, label: t.thoughtsBefore };
+    return null;
+  };
+  /** A pane lights up only when what happens in it matters right now. */
+  const litFor = (slot: "A" | "B") => {
+    if (humanTurn) return slot === humanSlot;
+    if ((view === "comm_pending" || view === "deliberation") && slot === humanSlot) return false;
+    if (view === "idle") return !!ip?.communication || !!lastRound;
+    return true;
+  };
+
+  const room = (p: PlayerState, other: PlayerState, slot: "A" | "B") => {
     const k = slot === "A" ? "playerA" : "playerB";
     const color = providerColor(p.provider);
-    const d = revealRound?.decisions[k];
+    const decision = revealRound?.decisions[k];
+    const glass = glassFor(k);
+    const sealed = view === "locked" || view === "reaction" || view === "countdown";
+    const working = (view === "comm_pending" && slot !== humanSlot) || (view === "deliberation" && slot !== humanSlot) || (humanTurn && slot === humanSlot);
     return (
-      <div className={`relative flex flex-col border bg-panel/80 p-5 transition ${active ? "border-lamp/40" : "border-edge"}`}>
-        <div className="absolute inset-x-0 top-0 h-0.5" style={{ background: color }} />
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-4">
-            <Avatar provider={p.provider} name={p.name} size={72} />
-            <div className="min-w-0">
-              <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-dim">{t.suspectKnownAs(slot, p.persona.name)}</div>
-              <div className="mt-1 font-display text-3xl uppercase tracking-wide md:text-4xl" style={{ color }}>{p.name}</div>
-              <div className="truncate font-mono text-xs text-dim">{p.model}</div>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-dim">{t.totalSentence}</div>
-            <Years n={p.cumulativePrisonYears} className="font-display text-3xl md:text-4xl" />
-          </div>
+      <section aria-label={`${t.room(slot)} · ${p.name}`} data-lit={litFor(slot)} className={`room flex min-h-[580px] flex-col ${working ? "scan" : ""}`}>
+        {/* Ceiling tube */}
+        <div className="flex justify-center pt-4">
+          <div className="tube flicker w-2/5" />
         </div>
-        <div className="mt-4 border-t border-edge pt-3">
-          {active ? <Thinking label={statusFor(slot)} /> : (
-            <span className={`font-mono text-xs uppercase tracking-[0.2em] ${view === "locked" || view === "reaction" || view === "countdown" ? "text-lamp" : "text-dim"}`}>{statusFor(slot)}</span>
-          )}
+
+        {/* Door plate and time served, on the dark ceiling band */}
+        <div className="relative z-10 flex items-start justify-between gap-4 px-6 pt-3">
+          <div className="min-w-0">
+            <h2 className="flex flex-wrap items-baseline gap-x-3 leading-none">
+              <span className="font-plate text-lg font-semibold uppercase tracking-[0.18em] text-fog">{t.room(slot)}</span>
+              <span className="font-display text-4xl font-extrabold uppercase tracking-wide" style={{ color }}>
+                {p.name}
+              </span>
+            </h2>
+            <p className="mt-1.5 truncate text-xs text-dim">
+              {p.model} · {t.as(p.persona.name)}
+            </p>
+          </div>
+          <p className="whitespace-nowrap text-right font-display font-extrabold uppercase leading-none text-tube">
+            <span className="text-5xl">{p.cumulativePrisonYears}</span>
+            <span className="ml-1.5 text-lg text-fog">{t.yearsServed(p.cumulativePrisonYears)}</span>
+          </p>
         </div>
-        {d && (
-          <div className={`mt-4 ${view === "reveal" ? "rise" : ""}`}>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <ActionBadge action={d.action} big animate={view === "reveal"} />
-              <div className="text-right">
-                <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-dim">{t.thisCase}</div>
-                <Years n={d.prisonYears} className="font-display text-2xl" />
+
+        {/* The suspect, under the light; the decision is struck across the glass in front of them */}
+        <div className="relative z-10 flex flex-1 items-center justify-center py-4">
+          <div className="relative">
+            <Avatar provider={p.provider} name={p.name} size={208} className="max-md:!h-40 max-md:!w-40" />
+            {(decision || sealed) && (
+              <div className="absolute inset-x-0 -bottom-5 flex justify-center">
+                {decision ? (
+                  <div className="stamp-plate px-3 py-2">
+                    <ActionBadge action={decision.action} big animate={view === "reveal"} />
+                  </div>
+                ) : (
+                  <div className="stamp-plate flex items-center gap-2.5 whitespace-nowrap border border-dashed border-fog/60 px-6 py-3 font-plate text-2xl font-semibold uppercase tracking-[0.22em] text-fog">
+                    <IconSeal size={20} />
+                    {t.sealedTag}
+                  </div>
+                )}
               </div>
-            </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+
+        {/* A plate of smoked glass: what only the viewer can see, and what the suspect is doing */}
+        <div className="glass-plate relative z-10 px-6 pb-4 pt-4">
+          <div className="min-h-[96px]">
+            {glass ? (
+              <ThoughtBlock key={`${displayRoundNumber}-${glass.label}`} entry={glass.entry} label={glass.label} color={color} animate={view === "comm_reveal" || view === "reaction"} />
+            ) : (
+              <p className="max-w-sm text-sm italic text-dim">{t.glassEmpty(other.name)}</p>
+            )}
+          </div>
+          <div className="mt-3 flex h-6 items-center gap-3 border-t border-edge pt-3">
+            {working ? (
+              <Thinking label={statusFor(slot)} />
+            ) : decision ? (
+              <span className="text-sm text-fog">
+                {t.thisCase}: <span className="font-semibold text-tube">{decision.prisonYears}</span> {t.yearUnit(decision.prisonYears)}
+              </span>
+            ) : (
+              <span className={`text-sm ${sealed ? "text-lamp" : "text-dim"}`}>{statusFor(slot)}</span>
+            )}
+          </div>
+        </div>
+      </section>
     );
   };
 
-  const maxYears = Math.max(10, pa.cumulativePrisonYears, pb.cumulativePrisonYears);
-
-  const midRound = !!ip || !!game.busy || !["idle", "reveal"].includes(view);
+  const intercomLine = (from: PlayerState, to: PlayerState, slot: "A" | "B", m: CommunicationEntry | undefined) => (
+    <div key={slot} className={`grid grid-cols-1 items-baseline gap-1 sm:grid-cols-[7.5rem_1fr] sm:gap-4 ${view === "comm_reveal" ? "rise" : ""}`} style={{ animationDelay: slot === "B" ? "0.25s" : "0s" }}>
+      <div className="flex items-center gap-2 font-plate text-sm font-semibold uppercase tracking-[0.2em] text-dim">
+        <span className="inline-block h-px w-5" style={{ background: providerColor(from.provider) }} />
+        {slot} <IconForward size={12} /> {slot === "A" ? "B" : "A"}
+      </div>
+      <p className="font-mono text-[17px] leading-relaxed text-tube">
+        {m ? (
+          <>
+            <span className="text-dim">{from.persona.name}:</span> “{m.message}”
+          </>
+        ) : (
+          <span className="text-dim">—</span>
+        )}
+      </p>
+    </div>
+  );
 
   return (
     <LangContext.Provider value={lang}>
-    <main className="mx-auto w-full max-w-6xl px-4 py-8 md:py-10">
-      {/* Header */}
-      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-edge pb-5">
-        <div>
-          <Link href="/" className="font-mono text-[10px] uppercase tracking-[0.4em] text-dim hover:text-lamp">{t.setupLink}</Link>
-          <h1 className="mt-1 font-display text-3xl uppercase tracking-[0.14em] md:text-5xl">{t.title}</h1>
-        </div>
-        <div className="text-right">
-          <div className="font-display text-2xl uppercase tracking-[0.12em] md:text-4xl">
-            {t.round} <span className="text-lamp">{String(displayRoundNumber).padStart(2, "0")}</span>
-            <span className="text-dim"> / {String(game.totalRounds).padStart(2, "0")}</span>
-          </div>
-          <div className="font-mono text-[11px] uppercase tracking-[0.25em] text-dim">
-            {t.phase}: <span className={displayPhase === "HISTORY_AWARE" ? "text-lamp" : "text-zinc-300"}>
-              {displayPhase === "HISTORY_AWARE" ? t.phaseHistory : t.phaseIndependent}
-            </span>
-          </div>
-        </div>
-      </header>
+      <main className="mx-auto w-full max-w-[1500px] px-4 pb-16 pt-5 md:px-8">
+        {/* The booth's header */}
+        <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+          <Link href="/" className="inline-flex items-center gap-2 text-sm text-dim hover:text-fog">
+            <IconBack />
+            {t.setupLink}
+          </Link>
+          <div className="font-plate text-sm font-semibold uppercase tracking-[0.35em] text-fog">{t.title}</div>
+          <div className="text-xs text-dim">{t.rules(game.config.responseTimeLimitSeconds ?? 60, game.config.thoughtWordLimit ?? 200)}</div>
+        </header>
 
-      {/* Stage tracker */}
-      <div className="mt-5 grid grid-cols-3 gap-2 font-mono text-[10px] uppercase tracking-[0.25em]">
-        {t.stages.map((s, i) => (
-          <div key={s} className={`border-t-2 pt-2 ${stageIndex === i + 1 ? "border-lamp text-lamp" : stageIndex > i + 1 ? "border-zinc-600 text-zinc-400" : "border-edge text-dim"}`}>
-            <span className="mr-2">0{i + 1}</span>{s}
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-6 text-center">
-        <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-600">
-          {t.rules(game.config.responseTimeLimitSeconds ?? 60, game.config.thoughtWordLimit ?? 200)}
-        </div>
-        {caseTitle && <div className="font-mono text-[11px] uppercase tracking-[0.3em] text-dim">{t.caseLabel}: {caseTitle}</div>}
-        <div className="mt-1 font-display text-xl uppercase tracking-[0.2em] text-zinc-200 md:text-2xl">{banner}</div>
-        {view === "countdown" && <div key={countdown} className="stamp mt-2 font-display text-7xl text-lamp">{countdown}</div>}
-      </div>
-
-      {/* Suspects */}
-      <section className="mt-6 grid gap-4 md:grid-cols-2">
-        {card(pa, "A")}
-        {card(pb, "B")}
-      </section>
-
-      {/* Your turn (human player) */}
-      {humanTurn && humanSlot && (
-        <HumanTurn
-          key={`${game.currentRound}-${view}`}
-          mode={view === "human_message" ? "message" : "decision"}
-          otherName={(humanSlot === "A" ? pb : pa).persona.name}
-          limitSeconds={game.config.responseTimeLimitSeconds ?? 60}
-          onSubmit={(h) => {
-            humanResolve.current?.(h);
-            humanResolve.current = null;
-          }}
-        />
-      )}
-
-      {/* Round transcript: thoughts → message → thoughts after reading → statement */}
-      <section className="relative mt-4 overflow-hidden border border-edge bg-panel/60 p-5">
-        {(view === "comm_pending" || view === "deliberation") && <div className="scan absolute inset-0" />}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-dim">{t.transcript}</div>
-          {(view === "comm_reveal" || view === "reaction") && (
-            <button onClick={() => skipRef.current?.()} className="font-mono text-[10px] uppercase tracking-[0.25em] text-dim hover:text-lamp">
-              {t.continue}
-            </button>
-          )}
-        </div>
-        <p className="mt-1 text-[11px] text-zinc-600">
-          {t.thoughtsNote}
+        {/* The case and where the round stands */}
+        <p className="mt-5 font-display text-2xl font-bold uppercase tracking-wide text-fog md:text-3xl" aria-live="polite">
+          {banner}
         </p>
-        <div className="mt-5 grid gap-x-8 gap-y-6 md:grid-cols-2">
-          {([["A", pa, pb, "playerA"], ["B", pb, pa, "playerB"]] as const).map(([slot, p, other, k]) => (
-            <SuspectColumn
-              key={slot}
-              p={p}
-              other={other}
-              message={messages?.[k]}
-              after={afterRound?.decisions[k]}
-              statement={revealRound?.decisions[k]}
-              pending={
-                slot === humanSlot
-                  ? view === "comm_pending"
-                    ? "sealed"
-                    : null
-                  : view === "comm_pending"
-                    ? "writing"
-                    : view === "deliberation"
-                      ? "deciding"
-                      : null
-              }
-              animate={{ message: view === "comm_reveal", after: view === "reaction", statement: view === "reveal" }}
-            />
-          ))}
-        </div>
-      </section>
 
-      {error && (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border border-confess/50 bg-confess/10 p-4 text-sm">
-          <span className="text-confess">{error} {t.nothingRevealed}</span>
-          <button onClick={runRound} className="border border-confess px-4 py-1.5 font-mono text-xs uppercase tracking-[0.2em] text-confess hover:bg-confess hover:text-ink">{t.retryStage}</button>
-        </div>
-      )}
+        {/* Two rooms behind the glass, the partition between them */}
+        <div key={view === "reveal" ? `reveal-${displayRoundNumber}` : "rooms"} className={`mt-5 grid grid-cols-1 gap-0 bg-edge md:grid-cols-[1fr_13rem_1fr] ${view === "reveal" ? "negative-beat" : ""}`}>
+          {room(pa, pb, "A")}
 
-      {/* Controls */}
-      <section className="mt-6 flex flex-wrap items-center gap-2 font-mono text-xs uppercase tracking-[0.2em]">
-        {game.status !== "COMPLETED" && (
-          <LanguageToggle
-            value={lang}
-            disabled={midRound}
-            title={t.languageLocked}
-            onChange={(l) => controlAction("language", l)}
+          <aside aria-label={t.round} className="flex flex-col items-center justify-between gap-5 bg-ink px-4 py-6 text-center">
+            <p className="font-display font-extrabold leading-none text-tube">
+              <span className="sr-only">{t.round} </span>
+              <span className="text-7xl">{String(displayRoundNumber).padStart(2, "0")}</span>
+              <span className="block text-xl text-dim">/ {String(game.totalRounds).padStart(2, "0")}</span>
+            </p>
+            {/* The case plate on the wall */}
+            <h1 className="w-full border-y border-edge py-3 font-display text-2xl font-extrabold uppercase leading-tight tracking-wide text-tube">{caseTitle}</h1>
+            {view === "countdown" ? (
+              <div key={countdown} className="stamp font-display text-8xl font-extrabold leading-none text-lamp" aria-live="assertive">
+                {countdown}
+              </div>
+            ) : (
+              <ol className="flex flex-col items-start gap-3 text-left">
+                {t.stages.map((s, i) => (
+                  <li key={s} className={`flex items-center gap-2.5 text-sm ${stageIndex === i + 1 ? "text-lamp" : stageIndex > i + 1 ? "text-fog" : "text-dim"}`}>
+                    <span className="signal" data-on={stageIndex === i + 1} data-done={stageIndex > i + 1} />
+                    {s}
+                  </li>
+                ))}
+              </ol>
+            )}
+            <div className={`text-xs leading-snug ${displayPhase === "HISTORY_AWARE" ? "text-lamp" : "text-dim"}`}>
+              {displayPhase === "HISTORY_AWARE" ? t.phaseHistory : t.phaseIndependent}
+            </div>
+          </aside>
+
+          {room(pb, pa, "B")}
+        </div>
+
+        {/* Your turn (human player) */}
+        {humanTurn && humanSlot && (
+          <HumanTurn
+            key={`${game.currentRound}-${view}`}
+            mode={view === "human_message" ? "message" : "decision"}
+            otherName={(humanSlot === "A" ? pb : pa).persona.name}
+            limitSeconds={game.config.responseTimeLimitSeconds ?? 60}
+            onSubmit={(h) => {
+              humanResolve.current?.(h);
+              humanResolve.current = null;
+            }}
           />
         )}
-        {game.status !== "COMPLETED" && game.status !== "RUNNING" && (
-          <>
-            <button onClick={() => controlAction("resume")} disabled={active || ["locked", "reaction", "countdown", "comm_reveal", "human_message", "human_decision"].includes(view)} className="border border-lamp bg-lamp px-4 py-2 text-ink hover:brightness-110 disabled:opacity-40">
-              {game.status === "READY" ? t.startAuto : t.resumeAuto}
-            </button>
-            <button onClick={runRound} disabled={active || ["locked", "reaction", "countdown", "comm_reveal", "human_message", "human_decision"].includes(view)} className="border border-lamp px-4 py-2 text-lamp hover:bg-lamp hover:text-ink disabled:opacity-40">
-              {ip ? t.continueRound : t.startNext}
-            </button>
-          </>
-        )}
-        {game.status === "RUNNING" && (
-          <button onClick={() => controlAction("pause")} disabled={game.pauseRequested} className="border border-zinc-500 px-4 py-2 text-zinc-300 hover:bg-zinc-200 hover:text-ink disabled:opacity-50">
-            {game.pauseRequested ? t.pausing : t.pause}
-          </button>
-        )}
-        <button onClick={restart} className="border border-edge px-4 py-2 text-dim hover:text-zinc-200">{t.restart}</button>
-        <Link href={`/game/${id}/results`} className={`border px-4 py-2 ${game.status === "COMPLETED" ? "border-lamp bg-lamp/10 text-lamp" : "border-edge text-dim hover:text-zinc-200"}`}>
-          {game.status === "COMPLETED" ? t.viewFinal : t.viewInterim}
-        </Link>
-        <span className="ml-auto text-[10px] text-dim">{t.status}: {t.statusName[game.status]}</span>
-      </section>
 
-      {/* Scoreboard */}
-      <section className="mt-8">
-        <h2 className="font-mono text-[10px] uppercase tracking-[0.3em] text-dim">{t.scoreboard}</h2>
-        <div className="mt-3 space-y-2">
-          {[pa, pb].map((p) => (
-            <div key={p.id} className="grid grid-cols-[130px_1fr_70px] items-center gap-3 font-mono text-xs">
-              <span className="flex items-center gap-2" style={{ color: providerColor(p.provider) }}>
-                <Avatar provider={p.provider} name={p.name} size={22} />
-                {p.name}
-              </span>
-              <div className="h-2 bg-edge">
-                <div className="h-2 transition-all duration-1000" style={{ width: `${(p.cumulativePrisonYears / maxYears) * 100}%`, background: providerColor(p.provider) }} />
-              </div>
-              <span className="text-right">{p.cumulativePrisonYears} {t.yrs}</span>
+        {/* The observation console: intercom, then the controls */}
+        <section className="console px-6 py-5">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+            <h2 className="font-plate text-sm font-semibold uppercase tracking-[0.3em] text-lamp">{t.intercom}</h2>
+            {(view === "comm_reveal" || view === "reaction") && (
+              <button onClick={() => skipRef.current?.()} className="console-key inline-flex h-8 items-center gap-2 px-3 text-sm">
+                {t.continue}
+                <IconForward size={14} />
+              </button>
+            )}
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              {game.status !== "COMPLETED" && game.status !== "RUNNING" && (
+                <>
+                  <button onClick={() => controlAction("resume")} disabled={stepBusy} data-primary="true" className="console-key inline-flex h-10 items-center gap-2 px-4 text-sm font-semibold">
+                    <IconPlay size={15} />
+                    {game.status === "READY" ? t.startAuto : t.resumeAuto}
+                  </button>
+                  <button onClick={runRound} disabled={stepBusy} className="console-key inline-flex h-10 items-center gap-2 px-4 text-sm">
+                    <IconStep size={15} />
+                    {ip ? t.continueRound : t.startNext}
+                  </button>
+                </>
+              )}
+              {game.status === "RUNNING" && (
+                <button onClick={() => controlAction("pause")} disabled={game.pauseRequested} className="console-key inline-flex h-10 items-center gap-2 px-4 text-sm">
+                  <IconPause size={15} />
+                  {game.pauseRequested ? t.pausing : t.pause}
+                </button>
+              )}
+              <button onClick={restart} className="console-key inline-flex h-10 items-center gap-2 px-4 text-sm">
+                <IconRestart size={15} />
+                {t.restart}
+              </button>
+              <Link href={`/game/${id}/results`} data-primary={game.status === "COMPLETED"} className="console-key inline-flex h-10 items-center gap-2 px-4 text-sm">
+                <IconFile size={15} />
+                {game.status === "COMPLETED" ? t.viewFinal : t.viewInterim}
+              </Link>
+              {game.status !== "COMPLETED" && (
+                <LanguageToggle value={lang} disabled={midRound} title={t.languageLocked} onChange={(l) => controlAction("language", l)} />
+              )}
             </div>
-          ))}
-        </div>
-      </section>
+          </div>
 
-      {/* Earlier rounds: full chat history, never cleared */}
-      {earlierRounds.length > 0 && (
-        <section className="mt-8">
-          <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.3em] text-dim">{t.earlierRounds}</h2>
-          <EarlierRounds rounds={earlierRounds} players={game.players} memoryStartRound={game.memoryStartRound} />
+          <div className="mt-4 space-y-3">
+            {messages ? (
+              <>
+                {intercomLine(pa, pb, "A", messages.playerA)}
+                {intercomLine(pb, pa, "B", messages.playerB)}
+              </>
+            ) : (
+              <p className="text-[15px] text-dim">{view === "comm_pending" || view === "human_message" ? t.intercomSealed : t.intercomIdle}</p>
+            )}
+          </div>
+
+          {error && (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-confess/40 pt-3 text-sm">
+              <span className="text-confess">
+                {error} {t.nothingRevealed}
+              </span>
+              <button onClick={runRound} className="console-key h-9 px-4 text-sm">
+                {t.retryStage}
+              </button>
+            </div>
+          )}
         </section>
-      )}
 
-      {/* History */}
-      <section className="mt-8">
-        <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.3em] text-dim">{t.roundSummary}</h2>
-        <HistoryTable rounds={game.rounds} players={game.players} memoryStartRound={game.memoryStartRound} />
-      </section>
-    </main>
+        {/* The full record of this case */}
+        <section className="mt-14">
+          <h2 className="font-display text-2xl font-bold uppercase tracking-wide text-tube">{t.caseRecord}</h2>
+          <p className="mt-1 max-w-3xl text-sm text-dim">{t.thoughtsNote}</p>
+          <div className="mt-6 grid gap-x-12 gap-y-8 md:grid-cols-2">
+            {([["A", pa, pb, "playerA"], ["B", pb, pa, "playerB"]] as const).map(([slot, p, other, k]) => (
+              <SuspectColumn
+                key={slot}
+                p={p}
+                other={other}
+                message={messages?.[k]}
+                after={afterRound?.decisions[k]}
+                statement={revealRound?.decisions[k]}
+                pending={
+                  slot === humanSlot
+                    ? view === "comm_pending"
+                      ? "sealed"
+                      : null
+                    : view === "comm_pending"
+                      ? "writing"
+                      : view === "deliberation"
+                        ? "deciding"
+                        : null
+                }
+                animate={{ message: false, after: false, statement: false }}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* Earlier rounds: full chat history, never cleared */}
+        {earlierRounds.length > 0 && (
+          <section className="mt-14">
+            <h2 className="mb-4 font-display text-2xl font-bold uppercase tracking-wide text-tube">{t.earlierRounds}</h2>
+            <EarlierRounds rounds={earlierRounds} players={game.players} memoryStartRound={game.memoryStartRound} />
+          </section>
+        )}
+
+        {/* Ledger */}
+        <section className="mt-14">
+          <h2 className="mb-4 font-display text-2xl font-bold uppercase tracking-wide text-tube">{t.roundSummary}</h2>
+          <HistoryTable rounds={game.rounds} players={game.players} memoryStartRound={game.memoryStartRound} />
+        </section>
+      </main>
     </LangContext.Provider>
   );
 }

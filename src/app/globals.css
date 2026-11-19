@@ -1,58 +1,326 @@
 @import "tailwindcss";
 
+/*
+ * Observation booth behind one-way glass.
+ * The booth is dark; the interview rooms are lit; the glass is smoked
+ * blue-green; the console is the only warm light. Oxblood marks TESTIFY,
+ * glass-white marks SILENT.
+ */
 @theme inline {
-  --color-ink: #06070a;
-  --color-panel: #0d0f14;
-  --color-edge: #1c2029;
-  --color-dim: #7b8494;
-  --color-lamp: #f2b84b;
-  --color-confess: #f0524f;
-  --color-deny: #5aa2ff;
+  /* booth & glass */
+  --color-ink: #070b0c; /* the booth, near-black */
+  --color-panel: #0e1617; /* console housing */
+  --color-glass: #0f1d1d; /* smoked glass */
+  --color-edge: #22302f; /* glazing bars, rules */
+  --color-dim: #87a09b; /* secondary text, tinted from the glass */
+  --color-fog: #b9cbc6; /* reflections on the glass */
+  /* the rooms */
+  --color-room: #1d2a29; /* lit interview-room wall */
+  --color-tube: #eef6f2; /* fluorescent tube */
+  /* the console */
+  --color-lamp: #e5a54b; /* amber console light */
+  /* decisions */
+  --color-confess: #d24a3f; /* oxblood, readable on the booth */
+  --color-oxblood: #7d1f1a;
+  --color-deny: #e8efeb; /* glass-white */
+  /* model accents (identity only, never text) */
   --color-gpt: #14a888;
   --color-claude: #cf7450;
-  --font-sans: var(--font-inter);
-  --font-display: var(--font-oswald);
-  --font-mono: var(--font-plex-mono);
+  --font-sans: var(--font-public);
+  --font-display: var(--font-shoulders);
+  --font-plate: var(--font-stencil);
+  --font-mono: var(--font-courier);
 }
 
-html, body {
-  background: #06070a;
-  color: #e8eaef;
+html,
+body {
+  background: #070b0c;
+  color: #dfe8e4;
 }
 
 body {
-  font-family: var(--font-inter), system-ui, sans-serif;
+  font-family: var(--font-public), "PingFang SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
 }
 
-/* Overhead interrogation lamp + film grain */
+/* Browser surfaces carry the world too. */
+::selection {
+  background: #e5a54b;
+  color: #070b0c;
+}
+:focus-visible {
+  outline: 2px solid #e5a54b;
+  outline-offset: 3px;
+}
+* {
+  scrollbar-color: #2c3d3b #070b0c;
+  scrollbar-width: thin;
+}
+input,
+textarea,
+select {
+  caret-color: #e5a54b;
+}
+input::placeholder,
+textarea::placeholder {
+  color: #6f8783;
+}
+a {
+  text-underline-offset: 3px;
+}
+
+/* The booth: dark, with the faint spill of two lit rooms through the glass. */
 .stage-bg {
   background:
-    radial-gradient(ellipse 60% 45% at 50% -5%, rgba(242, 184, 75, 0.16), transparent 70%),
-    radial-gradient(ellipse 40% 60% at 0% 100%, rgba(25, 195, 156, 0.05), transparent 70%),
-    radial-gradient(ellipse 40% 60% at 100% 100%, rgba(224, 131, 94, 0.05), transparent 70%),
-    #06070a;
+    radial-gradient(ellipse 45% 38% at 27% 12%, rgba(205, 232, 224, 0.06), transparent 70%),
+    radial-gradient(ellipse 45% 38% at 73% 12%, rgba(205, 232, 224, 0.06), transparent 70%),
+    #070b0c;
 }
+/* Fine film grain over everything, for the camera. */
 .grain::after {
   content: "";
   pointer-events: none;
   position: fixed;
   inset: 0;
-  opacity: 0.05;
+  opacity: 0.045;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-  z-index: 50;
+  z-index: 60;
+}
+
+/*
+ * An interview room seen through the one-way glass. Lit, it is the brightest
+ * thing on screen: a dark ceiling band, then cold fluorescent walls pooling
+ * around the suspect. Unlit, it drops back into the booth's darkness.
+ */
+.room {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 58% 52% at 50% 40%, rgba(238, 246, 242, 0.95) 0%, rgba(205, 222, 216, 0.75) 38%, rgba(124, 146, 140, 0) 78%),
+    linear-gradient(180deg, #121b1b 0%, #172322 19%, #8fa49e 33%, #a9bbb5 58%, #6d817b 100%);
+  transition:
+    filter 900ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 900ms cubic-bezier(0.16, 1, 0.3, 1);
+  filter: brightness(0.36) saturate(0.55);
+}
+.room[data-lit="true"] {
+  filter: none;
+}
+/* The glass itself: a faint smoked tint and one diagonal reflection sweep. */
+.room::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(115deg, transparent 0 38%, rgba(255, 255, 255, 0.09) 42%, transparent 48% 100%),
+    rgba(10, 30, 30, 0.12);
+}
+/* The fluorescent tube on the ceiling. */
+.tube {
+  height: 6px;
+  border-radius: 3px;
+  background: #f4fbf8;
+  box-shadow:
+    0 2px 18px 4px rgba(238, 246, 242, 0.45),
+    0 24px 80px 30px rgba(238, 246, 242, 0.12);
+}
+.room[data-lit="false"] .tube {
+  background: #9fb2ad;
+  box-shadow: 0 2px 8px 1px rgba(238, 246, 242, 0.1);
+}
+/* A plate of darker smoked glass at the foot of the pane, where the viewer reads. */
+.glass-plate {
+  background: linear-gradient(180deg, rgba(8, 16, 16, 0.78), rgba(6, 12, 12, 0.9));
+  box-shadow: inset 0 1px 0 rgba(220, 240, 234, 0.12);
+}
+/* A label struck onto the glass: the decision, or its sealed slot. */
+.stamp-plate {
+  background: rgba(7, 11, 12, 0.86);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+/* Words on the glass: a reflection only the viewer can see, doubled faintly
+   the way a pane of glass shows a second, offset image. */
+.reflection {
+  color: #d4e3de;
+  text-shadow:
+    3px 2px 2px rgba(160, 200, 192, 0.18),
+    0 0 12px rgba(160, 200, 192, 0.18);
+}
+
+/* The amber console. */
+.console {
+  background:
+    linear-gradient(180deg, rgba(229, 165, 75, 0.07), transparent 40%),
+    #0e1617;
+  box-shadow: inset 0 1px 0 rgba(229, 165, 75, 0.35);
+}
+.console-key {
+  border: 1px solid #3a4644;
+  background: #121c1c;
+  color: #dfe8e4;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.7), 0 4px 10px rgba(0, 0, 0, 0.35);
+  transition:
+    transform 120ms ease-out,
+    box-shadow 120ms ease-out,
+    background 200ms ease-out;
+}
+.console-key:hover:not(:disabled) {
+  background: #182424;
+}
+.console-key:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+}
+.console-key:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+.console-key[data-primary="true"] {
+  border-color: #e5a54b;
+  background: #e5a54b;
+  color: #160d02;
+}
+.console-key[data-primary="true"]:hover:not(:disabled) {
+  background: #f0b562;
+}
+
+/* Signal lamp on the partition / console. */
+.signal {
+  width: 9px;
+  height: 9px;
+  border-radius: 9999px;
+  background: #2a3534;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.6);
+}
+.signal[data-on="true"] {
+  background: #e5a54b;
+  box-shadow: 0 0 10px 2px rgba(229, 165, 75, 0.55);
+}
+.signal[data-done="true"] {
+  background: #8a7a5c;
+}
+
+/* --- motion --- */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+.rise {
+  animation: rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Thoughts condense onto the glass, like breath. */
+@keyframes condense {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+    letter-spacing: 0.04em;
+  }
+  to {
+    opacity: 1;
+    filter: none;
+    letter-spacing: 0;
+  }
+}
+.condense {
+  animation: condense 1.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* The decision is stamped onto the glass. */
+@keyframes stamp {
+  0% {
+    opacity: 0;
+    transform: scale(1.9) rotate(-9deg);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(0.95) rotate(-5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(-5deg);
+  }
+}
+.stamp {
+  animation: stamp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* The reveal: the whole frame flips to its negative for one beat. */
+@keyframes negative {
+  0%,
+  100% {
+    filter: none;
+  }
+  12%,
+  30% {
+    filter: invert(1) hue-rotate(180deg);
+  }
+}
+.negative-beat {
+  animation: negative 0.45s steps(1, end) 1;
+}
+
+@keyframes dots {
+  0%,
+  20% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.2;
+  }
+}
+.dot {
+  animation: dots 1.4s infinite;
+}
+.dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.dot:nth-child(3) {
+  animation-delay: 0.4s;
 }
 
 @keyframes flicker {
-  0%, 100% { opacity: 1; }
-  45% { opacity: 0.85; }
-  50% { opacity: 0.55; }
-  55% { opacity: 0.9; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  47% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.55;
+  }
+  53% {
+    opacity: 0.95;
+  }
 }
-.flicker { animation: flicker 3.2s infinite; }
+.flicker {
+  animation: flicker 4.2s infinite;
+}
 
 @keyframes pulse-ring {
-  0% { transform: scale(0.9); opacity: 0.7; }
-  100% { transform: scale(1.6); opacity: 0; }
+  0% {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
 }
 .pulse-ring::before {
   content: "";
@@ -63,40 +331,44 @@ body {
   animation: pulse-ring 1.6s ease-out infinite;
 }
 
-@keyframes rise {
-  from { opacity: 0; transform: translateY(12px); filter: blur(6px); }
-  to { opacity: 1; transform: none; filter: none; }
-}
-.rise { animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
-
-@keyframes stamp {
-  0% { opacity: 0; transform: scale(1.8) rotate(-6deg); }
-  60% { opacity: 1; transform: scale(0.96) rotate(-2deg); }
-  100% { opacity: 1; transform: scale(1) rotate(-2deg); }
-}
-.stamp { animation: stamp 0.55s cubic-bezier(0.2, 0.8, 0.3, 1.2) both; }
-
-@keyframes dots {
-  0%, 20% { opacity: 0.2; }
-  50% { opacity: 1; }
-  100% { opacity: 0.2; }
-}
-.dot { animation: dots 1.4s infinite; }
-.dot:nth-child(2) { animation-delay: 0.2s; }
-.dot:nth-child(3) { animation-delay: 0.4s; }
-
+/* A slow pass of light across the glass while someone is working. */
 @keyframes scan {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(100%); }
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(100%);
+  }
 }
 .scan::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(242, 184, 75, 0.08), transparent);
-  animation: scan 2.4s linear infinite;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(238, 246, 242, 0.06), transparent);
+  animation: scan 3.2s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .flicker, .rise, .stamp, .dot, .scan::after, .pulse-ring::before { animation: none !important; }
+  .flicker,
+  .rise,
+  .condense,
+  .stamp,
+  .dot,
+  .negative-beat,
+  .scan::after,
+  .pulse-ring::before {
+    animation: none !important;
+  }
+  .room {
+    transition: none;
+  }
+}
+
+/* Disclosure rows draw their own chevron. */
+summary {
+  list-style: none;
+}
+summary::-webkit-details-marker {
+  display: none;
 }

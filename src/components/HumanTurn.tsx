@@ -46,8 +46,8 @@ export function HumanTurn({
       type="button"
       disabled={sent}
       onClick={() => submit({ action: a })}
-      className={`flex-1 border-2 px-6 py-4 font-display text-2xl uppercase tracking-[0.2em] transition disabled:opacity-40 ${
-        a === "CONFESS" ? "border-confess text-confess hover:bg-confess hover:text-ink" : "border-deny text-deny hover:bg-deny hover:text-ink"
+      className={`console-key flex-1 border-2 px-6 py-5 font-plate text-3xl font-extrabold uppercase tracking-[0.16em] ${
+        a === "CONFESS" ? "!border-confess !text-confess hover:!bg-oxblood/40" : "!border-deny !text-deny hover:!bg-deny/10"
       }`}
     >
       {a === "CONFESS" ? t.confess : t.deny}
@@ -55,18 +55,18 @@ export function HumanTurn({
   );
 
   return (
-    <section className="rise mt-4 border border-lamp/60 bg-lamp/5 p-5">
+    <section className="console rise border-t border-lamp/60 px-6 py-6" aria-live="polite">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="font-display text-xl uppercase tracking-[0.15em] text-lamp">
+        <h2 className="font-display text-3xl font-extrabold uppercase tracking-wide text-lamp">
           {mode === "message" ? t.yourTurnMessage(otherName) : t.yourTurnDecide}
-        </div>
-        <div className={`font-mono text-xs uppercase tracking-[0.2em] ${left === 0 ? "text-confess" : "text-dim"}`}>
+        </h2>
+        <div className={`text-sm tabular-nums ${left === 0 ? "text-confess" : "text-fog"}`}>
           {left === 0 ? t.timeUp : t.timeLeft(left)}
         </div>
       </div>
-      <p className="mt-1 text-xs text-dim">{mode === "message" ? t.messageSealedNote(otherName) : t.decideNote(otherName)}</p>
+      <p className="mt-1 max-w-3xl text-sm text-dim">{mode === "message" ? t.messageSealedNote(otherName) : t.decideNote(otherName)}</p>
 
-      <label className="mt-4 block font-mono text-[10px] uppercase tracking-[0.25em] text-dim">{t.yourThoughts}</label>
+      <label className="mt-5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-dim">{t.yourThoughts}</label>
       <textarea
         value={thoughts}
         onChange={(e) => setThoughts(e.target.value)}
@@ -74,12 +74,12 @@ export function HumanTurn({
         maxLength={2000}
         disabled={sent}
         placeholder={t.yourThoughtsPlaceholder}
-        className="mt-1 w-full resize-y border border-edge bg-ink px-3 py-2 text-sm italic text-zinc-300 outline-none focus:border-lamp"
+        className="reflection mt-1.5 w-full resize-y border border-edge bg-glass px-3 py-2 text-[15px] font-light italic outline-none focus:border-lamp"
       />
 
       {mode === "message" ? (
         <>
-          <label className="mt-3 block font-mono text-[10px] uppercase tracking-[0.25em] text-dim">{t.messageTo(otherName)}</label>
+          <label className="mt-4 block text-[11px] font-semibold uppercase tracking-[0.14em] text-dim">{t.messageTo(otherName)}</label>
           <textarea
             autoFocus
             value={message}
@@ -88,9 +88,9 @@ export function HumanTurn({
             maxLength={2000}
             disabled={sent}
             placeholder={t.messagePlaceholder}
-            className="mt-1 w-full resize-y border border-edge bg-ink px-3 py-2 font-mono text-sm text-zinc-100 outline-none focus:border-lamp"
+            className="mt-1.5 w-full resize-y border border-edge bg-ink px-3 py-2 font-mono text-[16px] text-tube outline-none focus:border-lamp"
           />
-          <div className="mt-3 flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-dim">
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-dim">
             <span>{t.leaningOptional}</span>
             {(["CONFESS", "DENY"] as const).map((a) => (
               <button
@@ -99,7 +99,8 @@ export function HumanTurn({
                 disabled={sent}
                 aria-pressed={leaning === a}
                 onClick={() => setLeaning(leaning === a ? null : a)}
-                className={`border px-2 py-1 ${leaning === a ? "border-zinc-200 bg-zinc-200 text-ink" : "border-edge hover:text-zinc-200"}`}
+                data-primary={leaning === a}
+                className="console-key h-8 px-3 font-plate text-xs font-semibold uppercase tracking-[0.14em]"
               >
                 {a === "CONFESS" ? t.confess : t.deny}
               </button>
@@ -109,7 +110,8 @@ export function HumanTurn({
             type="button"
             disabled={sent || !message.trim()}
             onClick={() => submit({ message: message.trim(), leaning })}
-            className="mt-4 border border-lamp bg-lamp px-6 py-2 font-mono text-xs uppercase tracking-[0.2em] text-ink hover:brightness-110 disabled:opacity-40"
+            data-primary="true"
+            className="console-key mt-5 h-11 px-6 text-sm font-semibold"
           >
             {t.sendMessage}
           </button>
