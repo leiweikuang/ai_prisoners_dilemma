@@ -1,9 +1,10 @@
 import type { Lang, PayoffMatrix, PlayerSlot } from "../game/types";
-import { payoffFromPerspective } from "../game/payoff";
+import { normalizePayoff } from "../game/payoff";
 
 export interface PromptContext {
   lang: Lang;
-  slot: "A" | "B";
+  /** Which suspect this prompt is for ("You are Suspect A/B" in the full table). */
+  slot: PlayerSlot;
   totalRounds: number;
   currentRound: number;
   selfName: string;
@@ -92,7 +93,8 @@ The police can already prove a lesser charge against both of you. Only testimony
 }
 
 export function optionsBlock(ctx: PromptContext): string {
-  const p = payoffFromPerspective(ctx.payoff, ctx.slot);
+  // The full A/B table is shown to both suspects, with "You are Suspect A/B".
+  const p = normalizePayoff(ctx.payoff);
   const o = ctx.partnerName;
   if (ctx.lang === "zh")
     return `你的选择

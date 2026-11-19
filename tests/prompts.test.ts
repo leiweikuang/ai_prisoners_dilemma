@@ -150,22 +150,6 @@ describe("immersion", () => {
   });
 });
 
-describe("asymmetric sentences", () => {
-  it("each suspect's prompt states its own sentence as 'you'", () => {
-    const { state, ip } = stateAt(1);
-    state.config.payoff = {
-      bothConfessA: 7, bothConfessB: 6, AConfessBDenyA: 1, AConfessBDenyB: 12,
-      ADenyBConfessA: 11, ADenyBConfessB: 2, bothDenyA: 3, bothDenyB: 4,
-    };
-    const a = buildDecisionPrompt(state, ip, "A").user;
-    const b = buildDecisionPrompt(state, ip, "B").user;
-    expect(a).toMatch(/testify and \S+ stays silent: you receive 1 year in prison and they receive 12 years/);
-    expect(b).toMatch(/testify and \S+ stays silent: you receive 2 years in prison and they receive 11 years/);
-    expect(a).toMatch(/both stay silent: you receive 3 years in prison and they receive 4 years/);
-    expect(b).toMatch(/both stay silent: you receive 4 years in prison and they receive 3 years/);
-  });
-});
-
 describe("choice wording", () => {
   it("prompts use TESTIFY/SILENT (告发/沉默), never confess/deny wording", () => {
     for (const lang of ["en", "zh"] as const) {

@@ -74,13 +74,15 @@ export default function SetupPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- runs when the page is shown again (e.g. after Back):
+       clear a stale "Opening case…" state and restore the viewer's saved language */
     setBusy(false);
     setError(null);
     try {
       const saved = localStorage.getItem("lang");
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- restore a per-viewer preference once on mount
       if (saved === "zh" || saved === "en") setLangState(saved);
     } catch {}
+    /* eslint-enable react-hooks/set-state-in-effect */
     fetch("/api/config")
       .then((r) => r.json())
       .then((c) => {
