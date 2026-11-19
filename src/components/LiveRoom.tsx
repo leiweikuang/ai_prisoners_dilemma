@@ -40,6 +40,10 @@ export function LiveView({ id }: { id: string }) {
   const [view, setView] = useState<View>("idle");
   const [countdown, setCountdown] = useState(0);
   const [now, setNow] = useState(() => Date.now());
+  /** True while the decision request is running on the server: the suspects are thinking. */
+  const [deciding, setDeciding] = useState(false);
+  /** When the last reveal happened, for the "next case in Ns" countdown in auto mode. */
+  const [revealedAt, setRevealedAt] = useState<number | null>(null);
   const [pendingRound, setPendingRound] = useState<RoundResult | null>(null);
   const skipRef = useRef<(() => void) | null>(null);
   /** A pause the spectator can skip. */
@@ -57,6 +61,7 @@ export function LiveView({ id }: { id: string }) {
   const [notFound, setNotFound] = useState(false);
   const gameRef = useRef<PublicGameState | null>(null);
   const running = useRef(false);
+  const decisionPending = useRef(false);
   const errorRef = useRef<string | null>(null);
 
   const setGame = (g: PublicGameState) => {
@@ -127,6 +132,17 @@ export function LiveView({ id }: { id: string }) {
     if (running.current) return;
     running.current = true;
     fail(null);
+    let decisionCall: Promise<Awaited<ReturnType<typeof call>>> | null = null;
+    const startDecision = (roundNumber: number, human?: HumanInput) => {
+      decisionPending.current = true;
+      setDeciding(true);
+      const stopWatch = watch(roundNumber);
+      return call(`/api/games/${id}/advance`, { roundNumber, stage: "DECISION", human }).finally(() => {
+        stopWatch();
+        decisionPending.current = false;
+        setDeciding(false);
+      });
+    };
     try {
       let g = gameRef.current;
       if (!g || g.status === "COMPLETED") return;
@@ -149,15 +165,21 @@ export function LiveView({ id }: { id: string }) {
           return;
         }
         setView("comm_reveal");
+        // With no human to wait for, the suspects start deciding the moment the
+        // messages are delivered, while the viewer is still reading them.
+        if (!hs) decisionCall = startDecision(g.currentRound);
         const c = (r.data.game as PublicGameState).inProgress?.communication;
         await hold(readingMs([c?.playerA.writtenThoughts ?? c?.playerA.thoughts, c?.playerA.message], [c?.playerB.writtenThoughts ?? c?.playerB.thoughts, c?.playerB.message]));
       }
 
       g = gameRef.current!;
-      const humanDecision = hs && !g.inProgress?.submitted.decisions[hs] ? await askHuman("decision") : undefined;
-      setView("deliberation");
-      const stopWatch = watch(g.currentRound);
-      const r = await call(`/api/games/${id}/advance`, { roundNumber: g.currentRound, stage: "DECISION", human: humanDecision }).finally(stopWatch);
+      if (!decisionCall) {
+        const humanDecision = hs && !g.inProgress?.submitted.decisions[hs] ? await askHuman("decision") : undefined;
+        decisionCall = startDecision(g.currentRound, humanDecision);
+      }
+      // Still thinking after the reading pause: say so.
+      if (decisionPending.current) setView("deliberation");
+      const r = await decisionCall;
       if (!r.ok) {
         if (r.data.game) setGame(r.data.game);
         if (r.data.code === "busy") await waitUntilIdle();
@@ -180,6 +202,7 @@ export function LiveView({ id }: { id: string }) {
       }
       setGame(r.data.game);
       setPendingRound(null);
+      setRevealedAt(Date.now());
       setView("reveal");
     } catch (e) {
       fail((e as Error).message);
@@ -202,10 +225,10 @@ export function LiveView({ id }: { id: string }) {
 
   // A clock for the live "still deciding" timers.
   useEffect(() => {
-    if (view !== "comm_pending" && view !== "deliberation") return;
+    if (view !== "comm_pending" && view !== "deliberation" && view !== "reveal" && !deciding) return;
     const t = setInterval(() => setNow(Date.now()), 200);
     return () => clearInterval(t);
-  }, [view]);
+  }, [view, deciding]);
 
   // Auto-advance while RUNNING.
   useEffect(() => {
@@ -274,7 +297,7 @@ export function LiveView({ id }: { id: string }) {
       case "comm_pending":
         return t.stPreparing;
       case "comm_reveal":
-        return t.stDelivered;
+        return deciding ? t.stInterrogated : t.stDelivered;
       case "deliberation":
         return t.stInterrogated;
       case "locked":
@@ -297,21 +320,24 @@ export function LiveView({ id }: { id: string }) {
   const humanSlot = game.players.find((p) => p.provider === "human")?.id ?? null;
   const active = view === "comm_pending" || view === "deliberation";
   const humanTurn = view === "human_message" || view === "human_decision";
-  const stageIndex = view === "human_message" || view === "comm_pending" || view === "comm_reveal" ? 1 : view === "human_decision" ? 2 : view === "deliberation" || view === "locked" || view === "reaction" ? 2 : view === "countdown" || view === "reveal" ? 3 : ip?.communication ? 2 : 0;
+  const stageIndex = view === "human_message" || view === "comm_pending" || (view === "comm_reveal" && !deciding) ? 1 : view === "comm_reveal" ? 2 : view === "human_decision" ? 2 : view === "deliberation" || view === "locked" || view === "reaction" ? 2 : view === "countdown" || view === "reveal" ? 3 : ip?.communication ? 2 : 0;
   // Post-message thoughts: from the locked (not yet revealed) round during the reaction, else the last completed round.
   const afterRound = view === "reaction" || view === "countdown" ? pendingRound : showingLast ? lastRound : null;
 
+  // Auto mode moves on by itself after a reveal: count down to it.
+  const autoNext = view === "reveal" && game.status === "RUNNING" && !game.pauseRequested && !error && revealedAt !== null;
+  const nextAt = autoNext && revealedAt + NEXT_ROUND_MS > now ? revealedAt + NEXT_ROUND_MS : null;
   const banner = {
     idle: game.status === "COMPLETED" ? t.bannerAllClosed : ip?.communication ? t.bannerMsgsPending : lastRound ? t.bannerBetween : t.bannerInCustody,
     human_message: t.bannerCommPending,
     human_decision: t.bannerDeliberation,
     comm_pending: t.bannerCommPending,
-    comm_reveal: t.bannerCommReveal,
+    comm_reveal: deciding ? t.bannerDeliberation : t.bannerCommReveal,
     deliberation: t.bannerDeliberation,
     locked: t.bannerLocked,
     reaction: t.bannerReaction,
     countdown: t.bannerStatements,
-    reveal: t.bannerStatements,
+    reveal: nextAt !== null ? `${t.bannerStatements} ${t.nextCaseIn(Math.ceil(Math.min(NEXT_ROUND_MS, nextAt - now) / 1000))}` : t.bannerStatements,
   }[view];
 
   const midRound = !!ip || !!game.busy || !["idle", "reveal"].includes(view);
@@ -334,9 +360,10 @@ export function LiveView({ id }: { id: string }) {
   };
 
   /** Which stage the race is on, and how long each suspect took to seal it. */
-  const raceStage: "communication" | "decisions" = view === "comm_pending" || view === "comm_reveal" ? "communication" : "decisions";
+  const racing = active || deciding;
+  const raceStage: "communication" | "decisions" = view === "comm_pending" || (view === "comm_reveal" && !deciding) ? "communication" : "decisions";
   const raceTimings =
-    view === "comm_pending" || view === "deliberation" || view === "comm_reveal"
+    racing || view === "comm_reveal"
       ? ip?.sealedAfterMs?.[raceStage]
       : view === "locked" || view === "reaction" || view === "countdown"
         ? pendingRound?.sealedAfterMs?.decisions
@@ -347,10 +374,10 @@ export function LiveView({ id }: { id: string }) {
     const mine = raceTimings?.[slot];
     if (mine == null) return null;
     const theirs = raceTimings?.[slot === "A" ? "B" : "A"];
-    const first = theirs == null ? active : mine < theirs;
+    const first = theirs == null ? racing : mine < theirs;
     return `${t.sealedIn((mine / 1000).toFixed(1))}${first ? ` · ${t.sealedFirst}` : ""}`;
   };
-  const stageStart = ip?.stageStartedAt?.[view === "comm_pending" ? "COMMUNICATION" : "DECISION"];
+  const stageStart = ip?.stageStartedAt?.[raceStage === "communication" ? "COMMUNICATION" : "DECISION"];
   const elapsedSec = stageStart ? Math.max(0, Math.floor((now - Date.parse(stageStart)) / 1000)) : null;
 
   const room = (p: PlayerState, other: PlayerState, slot: "A" | "B") => {
@@ -359,9 +386,9 @@ export function LiveView({ id }: { id: string }) {
     const decision = revealRound?.decisions[k];
     const glass = glassFor(k);
     // Sealed while the other suspect is still working: this one answered first.
-    const sealedNow = active && !!ip?.submitted[raceStage][slot];
+    const sealedNow = racing && !!ip?.submitted[raceStage][slot];
     const sealed = view === "locked" || view === "reaction" || view === "countdown" || sealedNow;
-    const working = ((view === "comm_pending" || view === "deliberation") && slot !== humanSlot && !sealedNow) || (humanTurn && slot === humanSlot);
+    const working = (racing && slot !== humanSlot && !sealedNow) || (humanTurn && slot === humanSlot);
     const timing = sealTime(slot);
     return (
       <section aria-label={`${t.room(slot)} · ${p.name}`} data-lit={litFor(slot)} className={`room flex min-h-[580px] flex-col ${working ? "scan" : ""}`}>
