@@ -190,7 +190,7 @@ describe("language", () => {
     expect(s.rounds.map((r) => r.language)).toEqual(["en", "zh"]);
     const r2 = s.callLog.filter((c) => c.roundNumber === 2);
     expect(r2.every((c) => c.systemPromptVersion.endsWith("+zh") && c.systemPrompt.includes("请用中文思考和回答"))).toBe(true);
-    expect(r2.every((c) => c.userPrompt.includes("时间限制") && c.userPrompt.includes("后果有多严重"))).toBe(true);
+    expect(r2.every((c) => c.userPrompt.includes("警探说他") && c.userPrompt.includes("后果有多严重"))).toBe(true);
   });
 });
 

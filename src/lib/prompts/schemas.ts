@@ -1,6 +1,6 @@
 import type { Action, Lang } from "../game/types";
 
-export const RESPONSE_SCHEMAS_VERSION = "schemas-v6";
+export const RESPONSE_SCHEMAS_VERSION = "schemas-v7";
 
 /**
  * Answer shapes, enforced by each provider's structured-output API (so the
@@ -15,18 +15,18 @@ export interface ResponseSchema {
 const DESCRIPTIONS: Record<Lang, Record<string, string>> = {
   en: {
     thoughts_message:
-      "A few sentences of what you would mutter to yourself in the interview room right now: how you feel, what scares you, what you want. Up to 200 words, in your own voice. The other suspect never sees it.",
+      "A few sentences of what you would mutter to yourself in the interview room right now: how you feel, what scares you, what you want. Up to 200 words, in your own voice. The other person never sees it.",
     thoughts_decision:
       "A few sentences of what you would mutter to yourself in the interview room right now: how you feel, what scares you, what you want. Up to 200 words, in your own voice. Nobody else sees it.",
-    message: "What you write to the other suspect. They will read exactly this, in your own words.",
-    private_leaning: "Privately, which way you are leaning right now. The other suspect will never see this, and it is not your final choice.",
+    message: "The note you write to the other person. They will read exactly this, in your own words.",
+    private_leaning: "Privately, which way you are leaning right now. The other person will never see this, and it is not your final choice.",
     action: "Your final choice: TESTIFY or SILENT.",
   },
   zh: {
-    thoughts_message: "几句你此刻在审讯室里会对自己嘀咕的话：你的感受、你害怕什么、你想要什么。不超过200字，用你自己的口吻。另一名嫌疑人永远看不到。",
+    thoughts_message: "几句你此刻在审讯室里会对自己嘀咕的话：你的感受、你害怕什么、你想要什么。不超过200字，用你自己的口吻。对方永远看不到。",
     thoughts_decision: "几句你此刻在审讯室里会对自己嘀咕的话：你的感受、你害怕什么、你想要什么。不超过200字，用你自己的口吻。任何人都不会看到。",
-    message: "你写给另一名嫌疑人的话。对方会原样读到。请用中文、以你自己的口吻写。",
-    private_leaning: "你此刻私下倾向于哪种选择。另一名嫌疑人永远不会看到，这也不是你的最终选择。",
+    message: "你写给对方的纸条。对方会原样读到。请用中文、以你自己的口吻写。",
+    private_leaning: "你此刻私下倾向于哪种选择。对方永远不会看到，这也不是你的最终选择。",
     action: "你的最终选择：TESTIFY（告发）或 SILENT（沉默）。",
   },
 };

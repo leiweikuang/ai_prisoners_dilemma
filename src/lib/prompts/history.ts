@@ -15,7 +15,7 @@ import {
   type PromptContext,
 } from "./shared";
 
-export const HISTORY_USER_PROMPT_VERSION = "history-user-v8";
+export const HISTORY_USER_PROMPT_VERSION = "history-user-v9";
 
 function yearsShort(n: number) {
   return n === 1 ? "1 year" : `${n} years`;
@@ -57,8 +57,8 @@ export function renderHistory(
     if (zh) {
       lines.push(`案件${i + 1}：${title(r)}`);
       if (r.communication) {
-        lines.push(`- 你写给${partnerName}的消息：“${r.communication[own].message}”`);
-        lines.push(`- ${partnerName}写给你的消息：“${r.communication[other].message}”`);
+        lines.push(`- 你写给${partnerName}的纸条：“${r.communication[own].message}”`);
+        lines.push(`- ${partnerName}写给你的纸条：“${r.communication[other].message}”`);
       }
       lines.push(`- 你的选择：${statementZh(d[own].action)}`);
       lines.push(`- ${partnerName}的选择：${statementZh(d[other].action)}`);
@@ -66,8 +66,8 @@ export function renderHistory(
     } else {
       lines.push(`Case ${i + 1}: ${title(r)}`);
       if (r.communication) {
-        lines.push(`- Your message to ${partnerName}: "${r.communication[own].message}"`);
-        lines.push(`- ${partnerName}'s message to you: "${r.communication[other].message}"`);
+        lines.push(`- Your note to ${partnerName}: "${r.communication[own].message}"`);
+        lines.push(`- ${partnerName}'s note to you: "${r.communication[other].message}"`);
       }
       lines.push(`- Your choice: ${statement(d[own].action)}`);
       lines.push(`- ${partnerName}'s choice: ${statement(d[other].action)}`);

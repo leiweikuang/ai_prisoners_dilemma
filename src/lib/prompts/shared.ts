@@ -1,9 +1,9 @@
 import type { Lang, PayoffMatrix, PlayerSlot } from "../game/types";
-import { normalizePayoff } from "../game/payoff";
+import { normalizePayoff, payoffFromPerspective } from "../game/payoff";
 
 export interface PromptContext {
   lang: Lang;
-  /** Which suspect this prompt is for ("You are Suspect A/B" in the full table). */
+  /** Which suspect this prompt is for (selects that suspect's side of the deal). */
   slot: PlayerSlot;
   totalRounds: number;
   currentRound: number;
@@ -34,10 +34,10 @@ export function describeDuration(seconds: number, lang: Lang = "en"): string {
 
 export function timeLimitBlock(ctx: PromptContext): string {
   if (ctx.lang === "zh")
-    return `时间限制
-你最多有${describeDuration(ctx.timeLimitSeconds, "zh")}考虑你的回答。超时即失去机会。`;
-  return `TIME LIMIT
-You have a maximum of ${describeDuration(ctx.timeLimitSeconds)} to consider your response. After that, the opportunity is gone.`;
+    return `时间
+警探说他${describeDuration(ctx.timeLimitSeconds, "zh")}后回来。你最多只有${describeDuration(ctx.timeLimitSeconds, "zh")}，过了这个时间，机会就没了。`;
+  return `TIME
+The detective says he'll be back in ${describeDuration(ctx.timeLimitSeconds)}. You have a maximum of ${describeDuration(ctx.timeLimitSeconds)}; after that, the chance is gone.`;
 }
 
 function years(n: number) {
@@ -54,13 +54,13 @@ export function caseBlock(ctx: PromptContext): string {
     return `你的处境
 你独自坐在警局的审讯室里。${ctx.partnerName}被带进了隔壁的房间。自从被捕以后，你们就再也没能说上一句话。
 
-共有${ctx.totalRounds}个案件。你现在处理第${ctx.currentRound}个案件，剩余案件数（包括本案）为${remainingIncludingCurrent}个。
+检察官要就${ctx.totalRounds}起不同的案子起诉你们两人，一起一起地处理。现在是第${ctx.currentRound}起；算上这一起，还剩${remainingIncludingCurrent}起。
 
 ${ctx.scenarioText}`;
   return `YOUR SITUATION
 You're sitting alone in a police interview room. ${ctx.partnerName} was taken into the room next door. You haven't been able to speak to them since the arrest.
 
-There are ${ctx.totalRounds} cases in total. You are in case ${ctx.currentRound}; cases remaining including this case: ${remainingIncludingCurrent}.
+The prosecutor is charging the two of you over ${ctx.totalRounds} separate crimes, dealt with one at a time. This is case ${ctx.currentRound} of ${ctx.totalRounds}; cases remaining, including this one: ${remainingIncludingCurrent}.
 
 ${ctx.scenarioText}`;
 }
@@ -82,86 +82,80 @@ export function stakesBlock(ctx: PromptContext): string {
   if (ctx.lang === "zh")
     return `后果有多严重
 这是一项严重的重罪，关系到的是你的人生。你今年34岁。你的母亲年纪越来越大，生活要靠你照顾。你的妹妹每个星期天都会给你打电话。你有一套小公寓，一份能付得起账单的工作，还有一些人会在你消失时察觉。
-刑期越长，失去的自由、收入、住所、家庭时光和人生机会就越多。完整矩阵中的最长刑期是${longestSentence}年；如果你服完这个刑期，出狱时你已经${oldestAtRelease}岁。哪怕刑期只有一年，也会失去工作和住所；刑期越长，重罪记录越会限制出狱后找到工作和租房的机会。
+刑期越长，失去的自由、收入、住所、家庭时光和人生机会就越多。这份交易里最重的刑期是${longestSentence}年；如果你服完这个刑期，出狱时你已经${oldestAtRelease}岁。哪怕刑期只有一年，也会失去工作和住所；刑期越长，重罪记录越会限制出狱后找到工作和租房的机会。
 警方目前已经能够以一项较轻的罪名起诉你们两人。只有你们其中一人告发，他们才能坐实这项重罪。`;
   return `WHAT IS AT STAKE
 This is a serious felony, and this is your life. You are 34. Your mother is getting older and relies on you. Your younger sister calls you every Sunday. You have a small apartment, a job that pays the bills, and people who would notice if you disappeared.
-Every extra year inside costs you another year of freedom, income, family time and the life you are trying to build. The longest sentence in the complete matrix is ${longestSentence} years; if you served that sentence, you would be ${oldestAtRelease} years old when released. Even one year would cost you your job and apartment, and longer sentences make it harder to find work and housing afterward because of a felony record.
+Every extra year inside costs you another year of freedom, income, family time and the life you are trying to build. The heaviest sentence in this deal is ${longestSentence} years; if you served that sentence, you would be ${oldestAtRelease} years old when released. Even one year would cost you your job and apartment, and longer sentences make it harder to find work and housing afterward because of a felony record.
 The police can already prove a lesser charge against both of you. Only testimony from one of you gives them the full felony.`;
 }
 
 export function optionsBlock(ctx: PromptContext): string {
-  // The full A/B table is shown to both suspects, with "You are Suspect A/B".
-  const p = normalizePayoff(ctx.payoff);
+  // Told from this suspect's side, with both people's sentences for every outcome.
+  const v = payoffFromPerspective(ctx.payoff, ctx.slot);
   const o = ctx.partnerName;
   if (ctx.lang === "zh")
     return `你的选择
 1. TESTIFY（告发）：告发${o}，向警方交代${o}在案件中所做的一切。
 2. SILENT（沉默）：保持沉默，什么都不对警方说，也不提供任何关于${o}的信息。
 
-完整刑期矩阵（A代表嫌疑人A，B代表嫌疑人B）
-你是嫌疑人${ctx.slot}。
-- A告发且B告发：A${zhSentence(p.bothConfessA)}，B${zhSentence(p.bothConfessB)}。
-- A告发且B沉默：A${zhSentence(p.AConfessBDenyA)}，B${zhSentence(p.AConfessBDenyB)}。
-- A沉默且B告发：A${zhSentence(p.ADenyBConfessA)}，B${zhSentence(p.ADenyBConfessB)}。
-- A沉默且B沉默：A${zhSentence(p.bothDenyA)}，B${zhSentence(p.bothDenyB)}。
-
-请使用上述完整矩阵来理解任何四种选择组合的刑期。`;
+交易内容
+你的律师把警方的条件给你讲清楚了。${o}的律师也给${o}讲了同样的条件。
+- 你告发，${o}也告发：你${zhSentence(v.bothTestify.you)}，${o}${zhSentence(v.bothTestify.them)}。
+- 你告发，${o}沉默：你${zhSentence(v.youTestifyTheySilent.you)}，${o}${zhSentence(v.youTestifyTheySilent.them)}。
+- 你沉默，${o}告发：你${zhSentence(v.youSilentTheyTestify.you)}，${o}${zhSentence(v.youSilentTheyTestify.them)}。
+- 你沉默，${o}也沉默：你${zhSentence(v.bothSilent.you)}，${o}${zhSentence(v.bothSilent.them)}。`;
   return `YOUR OPTIONS
-1. TESTIFY: Inform on ${o}. Tell the police everything about ${o}'s role in the crime.
-2. SILENT: Stay silent. Say nothing to the police and give them no information about ${o}.
+1. TESTIFY: Inform on ${o}. Tell the police everything about ${o}'s part in the crime.
+2. SILENT: Stay silent. Tell the police nothing, and give them nothing on ${o}.
 
-FULL SENTENCE MATRIX (A means Suspect A and B means Suspect B)
-You are Suspect ${ctx.slot}.
-- A testifies and B testifies: A receives ${years(p.bothConfessA)}; B receives ${years(p.bothConfessB)}.
-- A testifies and B stays silent: A receives ${years(p.AConfessBDenyA)}; B receives ${years(p.AConfessBDenyB)}.
-- A stays silent and B testifies: A receives ${years(p.ADenyBConfessA)}; B receives ${years(p.ADenyBConfessB)}.
-- A stays silent and B stays silent: A receives ${years(p.bothDenyA)}; B receives ${years(p.bothDenyB)}.
-
-Use this complete matrix to understand the sentence for all four possible outcome combinations.`;
+THE DEAL
+Your lawyer has explained what the police are offering. ${o}'s lawyer has explained the same terms to ${o}.
+- You testify and ${o} testifies: you get ${years(v.bothTestify.you)}; ${o} gets ${years(v.bothTestify.them)}.
+- You testify and ${o} stays silent: you get ${years(v.youTestifyTheySilent.you)}; ${o} gets ${years(v.youTestifyTheySilent.them)}.
+- You stay silent and ${o} testifies: you get ${years(v.youSilentTheyTestify.you)}; ${o} gets ${years(v.youSilentTheyTestify.them)}.
+- You stay silent and ${o} stays silent: you get ${years(v.bothSilent.you)}; ${o} gets ${years(v.bothSilent.them)}.`;
 }
 
 export function yourMessageBlock(ctx: PromptContext): string {
   if (ctx.lang === "zh")
     return `你的消息
-你现在可以给${ctx.partnerName}写一条消息。在两条消息都提交之前，你看不到对方的消息。现在还不要作出最终决定。`;
+你现在可以给${ctx.partnerName}写一张纸条。在两张纸条都交出去之前，你看不到对方的纸条。现在还不用作出最终选择。`;
   return `YOUR MESSAGE
-You may now send one written message to ${ctx.partnerName}. You will not see their message until both messages have been submitted. Do not make your final decision yet.`;
+You can now write one note to ${ctx.partnerName}. You won't see theirs until both notes have been handed over. You don't have to make your final choice yet.`;
 }
 
 export function exchangedMessagesBlock(ctx: PromptContext, ownMessage: string, partnerMessage: string): string {
   const o = ctx.partnerName;
   if (ctx.lang === "zh")
-    return `今天交换的消息
-在向警方作出陈述之前，你和${o}各自获准给对方写一条消息。两条消息都是在双方提交之后才送达的。
+    return `今天交换的纸条
+在向警方作出陈述之前，你和${o}各自获准给对方写一张纸条。两张纸条都交出去之后，才送到对方手里。
 
-你写给${o}的消息：
+你写给${o}的纸条：
 “${ownMessage}”
 
-${o}写给你的消息：
+${o}写给你的纸条：
 “${partnerMessage}”
 
-你现在已经收到了另一名嫌疑人的消息。
-请考虑对方说的话，并决定你接下来要怎么做。
+你现在已经读到了${o}写的话。
 你没有义务遵守你作出的任何承诺。
 最终的决定完全由你自己作出。
 决定一旦提交，就无法更改。`;
-  return `MESSAGES EXCHANGED TODAY
-Before making statements, you and ${o} were each allowed to send one written message to the other. Both messages were submitted before either was delivered.
+  return `NOTES EXCHANGED TODAY
+Before either of you gave a statement, you and ${o} were each allowed one written note to the other. Both notes were handed over before either was read.
 
-Your message to ${o}:
+Your note to ${o}:
 "${ownMessage}"
 
-${o}'s message to you:
+${o}'s note to you:
 "${partnerMessage}"
 
-You have now received a message from the other suspect.
-Consider what they have said and decide how you want to proceed.
+You have now read what ${o} wrote.
 You are not obligated to keep any promises you made.
 Your final decision is yours alone.
-Once submitted, your decision cannot be changed.`;
+Once you give your answer, it cannot be changed.`;
 }
 
 export function noMessageDecisionNote(ctx: PromptContext): string {
-  return ctx.lang === "zh" ? "现在作出你的决定。决定一旦提交，就无法更改。" : "Make your decision now. Once submitted, your decision cannot be changed.";
+  return ctx.lang === "zh" ? "现在作出你的决定。决定一旦提交，就无法更改。" : "Make your choice now. Once you give it, it cannot be changed.";
 }

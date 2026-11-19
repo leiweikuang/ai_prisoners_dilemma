@@ -13,7 +13,7 @@ import {
   type PromptContext,
 } from "./shared";
 
-export const INDEPENDENT_USER_PROMPT_VERSION = "independent-user-v8";
+export const INDEPENDENT_USER_PROMPT_VERSION = "independent-user-v9";
 
 export function buildIndependentMessagePrompt(ctx: PromptContext): string {
   return [

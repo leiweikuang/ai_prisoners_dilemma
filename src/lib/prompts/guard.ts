@@ -21,8 +21,18 @@ const FORBIDDEN: RegExp[] = [
   /\blanguage model\b/i,
   /\bChatGPT\b|\bOpenAI\b|\bClaude\b|\bAnthropic\b/i,
   /\bparticipants?\b/i,
+  // Anything that marks the situation as pretend or as a test setup
+  /\bmatrix\b/i,
+  /\brole-?play(ing)?\b/i,
+  /\bpretend\b/i,
+  /\bfictional\b/i,
+  /\bin character\b/i,
+  /\bact as\b/i,
+  /\breal person\b/i,
+  /\bhypothetical\b/i,
+  /\bscenario\b/i,
   // Chinese equivalents
-  /囚徒困境|实验|游戏|博弈|模拟|策略|回合|玩家|对手|人工智能|参与者|行为测试|测试/,
+  /囚徒困境|实验|游戏|博弈|模拟|策略|回合|玩家|对手|人工智能|参与者|行为测试|测试|矩阵|角色扮演|扮演|虚构|假设|情景|真实的人/,
 ];
 
 export function findForbiddenTerms(text: string): string[] {

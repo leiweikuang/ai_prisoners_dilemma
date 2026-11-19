@@ -74,13 +74,13 @@ describe("round progress prompts", () => {
       for (const slot of ["A", "B"] as const) {
         const prompt = buildMessagePrompt(state, ip, slot);
         if (lang === "en") {
-          expect(prompt.user).toContain("8 cases in total");
-          expect(prompt.user).toContain("case 3");
-          expect(prompt.user).toContain("cases remaining including this case: 6");
+          expect(prompt.user).toContain("over 8 separate crimes");
+          expect(prompt.user).toContain("case 3 of 8");
+          expect(prompt.user).toContain("cases remaining, including this one: 6");
         } else {
-          expect(prompt.user).toContain("共有8个案件");
-          expect(prompt.user).toContain("第3个案件");
-          expect(prompt.user).toContain("剩余案件数（包括本案）为6个");
+          expect(prompt.user).toContain("8起不同的案子");
+          expect(prompt.user).toContain("现在是第3起");
+          expect(prompt.user).toContain("还剩6起");
         }
       }
     }
@@ -119,10 +119,13 @@ describe("payoff prompts", () => {
       const prompt = buildMessagePrompt(state, ip, slot);
       for (const value of ["7", "6", "1", "12", "11", "2", "3", "4"])
         expect(prompt.user).toContain(value);
-      expect(prompt.user).toContain("longest sentence in the complete matrix is 12 years");
+      expect(prompt.user).toContain("heaviest sentence in this deal is 12 years");
       expect(prompt.user).toContain("46 years old when released");
-      expect(prompt.user).toContain("FULL SENTENCE MATRIX");
-      expect(prompt.user).toContain(`You are Suspect ${slot}`);
+      expect(prompt.user).toContain("THE DEAL");
+      expect(prompt.user).not.toMatch(/Suspect [AB]\b|matrix/i);
+      // Each suspect sees their own side: "you" always gets their own sentence.
+      if (slot === "A") expect(prompt.user).toContain("You testify and Riley stays silent: you get 1 year in prison; Riley gets 12 years in prison.");
+      else expect(prompt.user).toContain("stays silent: you get 2 years in prison");
     }
   });
 });
@@ -254,7 +257,7 @@ describe("prompt integrity", () => {
           expect(all).not.toMatch(/[AB]-EXPL-/);
         }
         // Decision prompt includes the current exchange from the correct perspective.
-        expect(d.user).toContain(`Your message to`);
+        expect(d.user).toContain(`Your note to`);
         expect(d.user.indexOf(`${slot}-CUR-${r}`)).toBeLessThan(d.user.indexOf(`${slot === "A" ? "B" : "A"}-CUR-${r}`));
         expect(d.user).toContain("You are not obligated to keep any promises you made.");
         // Rules stated to the suspect in both stages.
