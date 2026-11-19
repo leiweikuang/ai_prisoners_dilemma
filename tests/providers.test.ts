@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { OpenAIPlayer } from "@/lib/ai/openai";
 import { ClaudePlayer } from "@/lib/ai/claude";
+import { DeepSeekPlayer } from "@/lib/ai/deepseek";
 import { decisionSchema } from "@/lib/prompts/schemas";
 
 const prompt = { system: "s", user: "u", schema: decisionSchema("en") };
@@ -14,6 +15,17 @@ describe("no internet access", () => {
     (p as unknown as { client: unknown }).client = { responses: { create } };
     await p.complete(prompt);
     const body = create.mock.calls[0][0];
+    for (const k of ["tools", "tool_choice", "mcp_servers"]) expect(body).not.toHaveProperty(k);
+  });
+
+  it("DeepSeek requests never include tools, even if params contain them", async () => {
+    process.env.DEEPSEEK_API_KEY = "test";
+    const p = new DeepSeekPlayer("DeepSeek", "deepseek-chat", { ...DeepSeekPlayer.defaultParams(), ...toolParams });
+    const create = vi.fn().mockResolvedValue({ choices: [{ message: { content: '{"action":"DENY","explanation":"x"}' } }], model: "deepseek-chat", usage: null });
+    (p as unknown as { client: unknown }).client = { chat: { completions: { create } } };
+    await p.complete(prompt);
+    const body = create.mock.calls[0][0];
+    expect(body.response_format).toEqual({ type: "json_object" });
     for (const k of ["tools", "tool_choice", "mcp_servers"]) expect(body).not.toHaveProperty(k);
   });
 

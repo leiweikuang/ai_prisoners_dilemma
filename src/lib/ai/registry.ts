@@ -1,6 +1,7 @@
 import type { PlayerConfig } from "../game/types";
 import { profileFor } from "../profiles";
 import { ClaudePlayer } from "./claude";
+import { DeepSeekPlayer } from "./deepseek";
 import { MockPlayer } from "./mock";
 import { OpenAIPlayer } from "./openai";
 import type { AIPlayer } from "./types";
@@ -22,6 +23,14 @@ export const PROVIDERS = {
     defaultParams: (model: string) => ClaudePlayer.defaultParams(model),
     create: (c: PlayerConfig) => new ClaudePlayer(c.name, c.model, c.params),
     available: () => !!process.env.ANTHROPIC_API_KEY,
+  },
+  deepseek: {
+    label: "DeepSeek",
+    displayName: profileFor("deepseek").displayName,
+    defaultModel: () => process.env.DEEPSEEK_MODEL || "deepseek-chat",
+    defaultParams: (model: string) => DeepSeekPlayer.defaultParams(model),
+    create: (c: PlayerConfig) => new DeepSeekPlayer(c.name, c.model, c.params),
+    available: () => !!process.env.DEEPSEEK_API_KEY,
   },
   mock: {
     label: "Mock (offline testing)",

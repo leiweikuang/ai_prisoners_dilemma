@@ -26,13 +26,14 @@ interface GameSummary {
 
 const OPENAI_SUGGESTIONS = ["gpt-5", "gpt-5-mini", "gpt-4.1"];
 const CLAUDE_SUGGESTIONS = ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5", "claude-fable-5-2"];
+const DEEPSEEK_SUGGESTIONS = ["deepseek-chat", "deepseek-reasoner"];
 
 export default function SetupPage() {
   const router = useRouter();
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [store, setStore] = useState<{ kind: string; onVercel: boolean } | null>(null);
   const [games, setGames] = useState<GameSummary[]>([]);
-  const [aProvider, setAProvider] = useState("openai");
+  const [aProvider, setAProvider] = useState("deepseek");
   const [bProvider, setBProvider] = useState("anthropic");
   const [aModel, setAModel] = useState("");
   const [bModel, setBModel] = useState("");
@@ -61,7 +62,14 @@ export default function SetupPage() {
         setProviders(c.providers);
         setStore({ kind: c.store, onVercel: c.onVercel });
         const find = (id: string) => c.providers.find((p: ProviderInfo) => p.id === id);
-        setAModel(find("openai")?.defaultModel ?? "");
+        const deepseek = find("deepseek");
+        if (deepseek?.available) {
+          setAProvider("deepseek");
+          setAModel(deepseek.defaultModel);
+        } else {
+          setAProvider("openai");
+          setAModel(find("openai")?.defaultModel ?? "");
+        }
         setBModel(find("anthropic")?.defaultModel ?? "");
       });
     fetch("/api/games")
@@ -71,7 +79,7 @@ export default function SetupPage() {
   }, []);
 
   const prov = (id: string) => providers.find((p) => p.id === id);
-  const choices = (slot: "A" | "B") => providers.filter((p) => p.id === (slot === "A" ? "openai" : "anthropic") || p.id === "mock");
+  const choices = (_slot: "A" | "B") => providers;
 
   async function start() {
     setBusy(true);
@@ -107,7 +115,7 @@ export default function SetupPage() {
     const setModel = slot === "A" ? setAModel : setBModel;
     const p = prov(provider);
     const color = providerColor(provider);
-    const suggestions = provider === "openai" ? OPENAI_SUGGESTIONS : provider === "anthropic" ? CLAUDE_SUGGESTIONS : [];
+    const suggestions = provider === "openai" ? OPENAI_SUGGESTIONS : provider === "anthropic" ? CLAUDE_SUGGESTIONS : provider === "deepseek" ? DEEPSEEK_SUGGESTIONS : [];
     return (
       <div className="relative border border-edge bg-panel/80 p-6" style={{ boxShadow: `inset 0 1px 0 ${color}33` }}>
         <div className="absolute left-0 top-0 h-full w-0.5" style={{ background: color }} />
