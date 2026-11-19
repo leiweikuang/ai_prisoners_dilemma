@@ -150,13 +150,11 @@ a {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
 }
 
-/* Words on the glass: a reflection only the viewer can see, doubled faintly
-   the way a pane of glass shows a second, offset image. */
+/* Words on the glass: a reflection only the viewer can see. A soft halo, no
+   offset double image, so it stays easy to read. */
 .reflection {
-  color: #d4e3de;
-  text-shadow:
-    5px 4px 1px rgba(170, 210, 200, 0.32),
-    0 0 14px rgba(160, 200, 192, 0.22);
+  color: #dbe8e4;
+  text-shadow: 0 0 12px rgba(160, 200, 192, 0.18);
 }
 
 /* The amber console. */

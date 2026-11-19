@@ -123,7 +123,7 @@ The surfaces are dense but quiet. Inside the lit rooms, text sits on dark backin
 - Square corners everywhere. Only avatars, signal lamps and the tube are round.
 - Amber is reserved for the console: primary keys, focus, active signals and the countdown.
 - Oxblood marks TESTIFY and glass-white marks SILENT. Those are the only two decision colours.
-- Thoughts appear as a faint doubled reflection on the glass; the intercom transcript is set in typewriter type.
+- Thoughts appear as a soft reflection on the glass; the intercom transcript is set in typewriter type.
 - The interface works in Chinese and English, with CJK fallbacks in every sans stack.
 
 ## Colors
@@ -221,7 +221,7 @@ Every surface is a square-cornered pane, like glass in a frame. Corners are radi
 A dark `.ceiling` band at the top of each room, under the tube. It holds "ROOM A" in stencil with the suspect name in the model accent, the model line in fog, and the years served on the right. It must stay on one line at every width; on mobile the parts stack vertically.
 
 ### Glass plate and reflection (signature)
-A smoked plate at the foot of the room. It holds the ThoughtBlock: a label with a short colour rule, the monologue in `.reflection` (#d4e3de with a 5px 4px double image), and a disclosure row with a drawn chevron for the provider's reasoning summary. Before the game ends, the AI's thoughts are hidden from a human opponent and replaced by a placeholder.
+A smoked plate at the foot of the room. It holds the ThoughtBlock: a label with a short colour rule, the monologue in `.reflection` (#dbe8e4 with a soft 12px halo; never an offset double image, which hurts legibility), and a disclosure row with a drawn chevron for the provider's reasoning summary. Before the game ends, the AI's thoughts are hidden from a human opponent and replaced by a placeholder.
 
 ### Decision stamp (signature)
 A `.stamp-plate` struck over the avatar's lower edge: a stencil word, double-bordered, with `mix-blend-mode: screen`. It animates from scale 1.9 at −9° to 1 at −5°. Before the reveal, the same slot shows a VHS-style SEALED tag.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-19T05:02:27.075566+00:00",
+  "generatedAt": "2026-11-19T06:22:07.204427+00:00",
   "title": "Design System: AI Interrogation",
   "extensions": {
     "colorMeta": {
@@ -397,7 +397,7 @@
       "refersTo": "glass-plate",
       "description": "Smoked plate at the foot of a room carrying the inner monologue as a reflection.",
       "html": "<div class=\"ds-plate\"><div class=\"ds-plate-label\">Thoughts before deciding</div><p class=\"ds-reflection\">I'm not saying anything. I'm trusting that we both keep our mouths shut.</p></div>",
-      "css": ".ds-plate{padding:24px;background:linear-gradient(180deg,rgba(8,16,16,.78),rgba(6,12,12,.9));box-shadow:inset 0 1px 0 rgba(220,240,234,.12);max-width:420px}.ds-plate-label{font:600 11px 'Public Sans',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#87a09b}.ds-reflection{margin:10px 0 0;font:italic 300 17px/1.6 'Public Sans',sans-serif;color:#d4e3de;text-shadow:5px 4px 1px rgba(170,210,200,.32),0 0 14px rgba(160,200,192,.22)}"
+      "css": ".ds-plate{padding:24px;background:linear-gradient(180deg,rgba(8,16,16,.78),rgba(6,12,12,.9));box-shadow:inset 0 1px 0 rgba(220,240,234,.12);max-width:420px}.ds-plate-label{font:600 11px 'Public Sans',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#87a09b}.ds-reflection{margin:10px 0 0;font:italic 300 17px/1.6 'Public Sans',sans-serif;color:#dbe8e4;text-shadow:0 0 12px rgba(160,200,192,.18)}"
     },
     {
       "name": "Door Plate",
@@ -422,7 +422,7 @@
       "Square corners everywhere; only avatars, lamps and the tube are round.",
       "Amber only on the console.",
       "Oxblood = TESTIFY, glass-white = SILENT.",
-      "Thoughts as a doubled reflection; intercom in typewriter type."
+      "Thoughts as a soft reflection; intercom in typewriter type."
     ],
     "rules": [
       {
