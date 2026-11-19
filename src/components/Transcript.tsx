@@ -27,7 +27,7 @@ export function SuspectColumn({
   message?: CommunicationEntry | null;
   after?: DecisionEntry | null;
   statement?: DecisionEntry | null;
-  pending?: "writing" | "deciding" | null;
+  pending?: "writing" | "deciding" | "sealed" | null;
   animate?: { message: boolean; after: boolean; statement: boolean };
   /** Also show the private leaning recorded with the message (review views). */
   showLeaning?: boolean;
@@ -59,6 +59,8 @@ export function SuspectColumn({
         </>
       ) : pending === "writing" ? (
         <Thinking label={t.writing} />
+      ) : pending === "sealed" ? (
+        <p className="font-mono text-xs text-dim">{t.sealedWaiting}</p>
       ) : (
         <p className="font-mono text-xs text-dim">{t.noMessage}</p>
       )}

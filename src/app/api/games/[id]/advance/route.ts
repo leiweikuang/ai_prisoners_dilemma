@@ -16,7 +16,19 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const body = await req.json();
     const stage = body?.stage;
     if (stage !== "COMMUNICATION" && stage !== "DECISION") throw new EngineError("Invalid stage", 400, "bad_request");
-    const state = await advance(id, { roundNumber: Number(body?.roundNumber), stage });
+    // Present only when a human plays one suspect (their sealed input for this stage).
+    const h = body?.human;
+    const human =
+      h && typeof h === "object"
+        ? {
+            message: typeof h.message === "string" ? h.message : undefined,
+            thoughts: typeof h.thoughts === "string" ? h.thoughts : undefined,
+            leaning: h.leaning === "CONFESS" || h.leaning === "DENY" ? h.leaning : null,
+            action: h.action === "CONFESS" || h.action === "DENY" ? h.action : undefined,
+            secondsTaken: Number.isFinite(h.secondsTaken) ? Math.round(h.secondsTaken) : undefined,
+          }
+        : undefined;
+    const state = await advance(id, { roundNumber: Number(body?.roundNumber), stage }, human);
     return Response.json({ game: toPublic(state) });
   } catch (e) {
     const res = errorResponse(e);

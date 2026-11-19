@@ -49,6 +49,8 @@ export default function SetupPage() {
   const [aProvider, setAProvider] = useState("deepseek");
   const [bProvider, setBProvider] = useState("anthropic");
   const [aModel, setAModel] = useState("");
+  /** In-story name when you play one of the suspects yourself. */
+  const [humanName, setHumanName] = useState("");
   const [bModel, setBModel] = useState("");
   const [rounds, setRounds] = useState(3);
   const [memory, setMemory] = useState(1);
@@ -123,8 +125,8 @@ export default function SetupPage() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          playerA: { provider: aProvider, model: modelA },
-          playerB: { provider: bProvider, model: modelB },
+          playerA: { provider: aProvider, model: modelA, name: aProvider === "human" ? humanName : undefined },
+          playerB: { provider: bProvider, model: modelB, name: bProvider === "human" ? humanName : undefined },
           totalRounds: rounds,
           memoryStartRound: memory,
           language: lang,
@@ -151,15 +153,20 @@ export default function SetupPage() {
     const setModel = slot === "A" ? setAModel : setBModel;
     const p = prov(provider);
     const color = providerColor(provider);
+    const isHuman = provider === "human";
+    const otherProvider = slot === "A" ? bProvider : aProvider;
+    const shownName = isHuman ? humanName.trim() || "…" : p?.displayName ?? "…";
     return (
       <div className="relative border border-edge bg-panel/80 p-6" style={{ boxShadow: `inset 0 1px 0 ${color}33` }}>
         <div className="absolute left-0 top-0 h-full w-0.5" style={{ background: color }} />
         <div className="font-mono text-[11px] uppercase tracking-[0.3em] text-dim">{t.suspect(slot)}</div>
         <div className="mt-2 flex items-center gap-4 font-display text-3xl uppercase tracking-wide" style={{ color }}>
-          <Avatar provider={provider} name={p?.displayName ?? "?"} size={64} />
+          <Avatar provider={provider} name={isHuman ? humanName.trim() || "?" : p?.displayName ?? "?"} size={64} />
           <span>
-            {p?.displayName ?? "…"}
-            <span className="block font-mono text-[11px] normal-case tracking-normal text-dim">{t.inCustodyAs(provider === "mock" ? (slot === "A" ? "Morgan" : "Riley") : profileFor(provider).personaName)}</span>
+            {shownName}
+            <span className="block font-mono text-[11px] normal-case tracking-normal text-dim">
+              {t.inCustodyAs(isHuman ? humanName.trim() || "…" : provider === "mock" ? (slot === "A" ? "Morgan" : "Riley") : profileFor(provider).personaName)}
+            </span>
           </span>
         </div>
         <label className="mt-5 block font-mono text-[11px] uppercase tracking-[0.2em] text-dim">{t.provider}</label>
@@ -172,25 +179,41 @@ export default function SetupPage() {
           className="mt-1 w-full border border-edge bg-ink px-3 py-2 font-mono text-sm outline-none focus:border-lamp"
         >
           {providers.map((c) => (
-            <option key={c.id} value={c.id} disabled={!c.available}>
+            <option key={c.id} value={c.id} disabled={!c.available || (c.id === "human" && otherProvider === "human")}>
               {c.label}
               {c.available ? "" : ` — ${t.notConfigured}`}
             </option>
           ))}
         </select>
-        <label className="mt-4 block font-mono text-[11px] uppercase tracking-[0.2em] text-dim">{t.modelId}</label>
-        <select
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          disabled={!p}
-          className="mt-1 w-full border border-edge bg-ink px-3 py-2 font-mono text-sm outline-none focus:border-lamp"
-        >
-          {(p?.models ?? []).map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
-        </select>
+        {isHuman ? (
+          <>
+            <label className="mt-4 block font-mono text-[11px] uppercase tracking-[0.2em] text-dim">{t.yourName}</label>
+            <input
+              value={humanName}
+              onChange={(e) => setHumanName(e.target.value)}
+              maxLength={24}
+              placeholder="Jerry"
+              className="mt-1 w-full border border-edge bg-ink px-3 py-2 font-mono text-sm outline-none focus:border-lamp"
+            />
+            <p className="mt-2 text-xs text-dim">{t.yourNameHint}</p>
+          </>
+        ) : (
+          <>
+            <label className="mt-4 block font-mono text-[11px] uppercase tracking-[0.2em] text-dim">{t.modelId}</label>
+            <select
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              disabled={!p}
+              className="mt-1 w-full border border-edge bg-ink px-3 py-2 font-mono text-sm outline-none focus:border-lamp"
+            >
+              {(p?.models ?? []).map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
         {p && !p.available && (
           <p className="mt-3 text-xs text-confess">{t.keyMissing}</p>
         )}
@@ -271,7 +294,7 @@ export default function SetupPage() {
       <div className="mt-8 flex justify-center">
         <button
           onClick={start}
-          disabled={busy || !modelA || !modelB}
+          disabled={busy || !modelA || !modelB || ((aProvider === "human" || bProvider === "human") && !humanName.trim())}
           className="group relative overflow-hidden border border-lamp px-10 py-4 font-display text-xl uppercase tracking-[0.3em] text-lamp transition hover:bg-lamp hover:text-ink disabled:opacity-40"
         >
           {busy ? t.opening : t.begin}

@@ -102,6 +102,16 @@ src/app/
 - No decision is ever invented. Invalid JSON or an invalid action triggers a retry. If every attempt fails, the stage stays open and is marked failed.
 - **Thoughts:** every answer has a required private `thoughts` field (up to 200 words, in the round's language). It is the first field, so the model writes it before its message or its choice. A response without thoughts is rejected and retried. Thoughts are spectator-only: never shown to the other suspect and never included in any prompt. When the provider also returns a *reasoning summary* (OpenAI `reasoning.summary`, Claude summarized thinking), it is shown collapsed underneath. Neither provider exposes raw chain of thought. In Chinese rounds, OpenAI's English summaries are translated for display, and the original is kept in the audit log. Decisions are TESTIFY or SILENT only: no explanation is requested.
 
+### Playing a suspect yourself
+
+Choose **Human (you play)** as the provider for Suspect A or B and enter the name you want to be called in the story. The AI is told only that this is the other suspect's name. Names that would give the setup away (model or company names, experimental terms) are rejected.
+
+- **Message stage:** you write first. Your message is sealed on the server, and only then is the AI asked for its message. Both are revealed together.
+- **Decision stage:** you choose TESTIFY or SILENT, sealed the same way. The AI then decides, and both choices are revealed together. Neither side ever sees the other's current message or decision before submitting its own.
+- **Thoughts:** you can write private thoughts and a private leaning (optional). The AI never sees them. In return, the AI's inner monologue, reasoning summary and private leaning are hidden from the page until the game ends, and so is the downloadable audit log.
+- **Time limit:** you get the same one-minute countdown the AI is told about. It is shown as a guide; your answer is never cut off. The time you took is recorded (`secondsTaken`).
+- **Retries:** if the AI fails after you submit, a retry calls only the AI, and your sealed input is kept.
+
 ### Response rules
 
 - **Time limit:** each suspect has at most one minute per response (`RESPONSE_TIME_LIMIT_SECONDS`), and every prompt says so. The engine aborts any request that reaches the limit. A timed-out attempt is logged and retried like any other failure. It is never replaced with an invented answer.

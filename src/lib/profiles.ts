@@ -18,6 +18,7 @@ export const PROFILES: Record<string, ModelProfile> = {
   doubao: { displayName: "Doubao", personaName: "Duhlulu", avatar: "/avatars/doubao.png?v=2", color: "#e8925a" },
   grok: { displayName: "Grok", personaName: "G-4-Gangsta", avatar: "/avatars/grok.png?v=2", color: "#b8bdc7" },
   mock: { displayName: "Mock", personaName: "Morgan", avatar: null, color: "#a78bfa" },
+  human: { displayName: "You", personaName: "You", avatar: null, color: "#e5e7eb" },
 };
 
 export function profileFor(provider: string): ModelProfile {

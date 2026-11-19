@@ -3,14 +3,15 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { CommunicationEntry, Lang, PlayerState, PublicGameState, RoundResult, Stage } from "@/lib/game/types";
+import type { CommunicationEntry, HumanInput, Lang, PlayerState, PublicGameState, RoundResult, Stage } from "@/lib/game/types";
+import { HumanTurn } from "@/components/HumanTurn";
 import { HistoryTable } from "@/components/HistoryTable";
 import { ActionBadge, Avatar, LanguageToggle, providerColor, Thinking, Years } from "@/components/ui";
 import { LangContext, STRINGS } from "@/lib/i18n";
 import { caseTitle as localCaseTitle } from "@/components/Transcript";
 import { EarlierRounds, SuspectColumn } from "@/components/Transcript";
 
-type View = "idle" | "comm_pending" | "comm_reveal" | "deliberation" | "locked" | "reaction" | "countdown" | "reveal";
+type View = "idle" | "human_message" | "human_decision" | "comm_pending" | "comm_reveal" | "deliberation" | "locked" | "reaction" | "countdown" | "reveal";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** Time to read revealed text: grows with the longer of the two columns. */
@@ -85,6 +86,14 @@ export function LiveView({ id }: { id: string }) {
     return gameRef.current;
   }, [refresh]);
 
+  // A human player's turn: the round waits here until they submit.
+  const humanResolve = useRef<((h: HumanInput) => void) | null>(null);
+  const askHuman = (mode: "message" | "decision") =>
+    new Promise<HumanInput>((resolve) => {
+      humanResolve.current = resolve;
+      setView(mode === "message" ? "human_message" : "human_decision");
+    });
+
   const runRound = useCallback(async () => {
     if (running.current) return;
     running.current = true;
@@ -95,9 +104,13 @@ export function LiveView({ id }: { id: string }) {
       if (g.busy) g = await waitUntilIdle();
       if (!g || g.status === "COMPLETED") return;
 
+      const hs = g.players.find((p) => p.provider === "human")?.id ?? null;
+
       if (expectedStage(g) === "COMMUNICATION") {
+        // You write first; your message is sealed before the AI is asked for its own.
+        const human = hs && !g.inProgress?.submitted.communication[hs] ? await askHuman("message") : undefined;
         setView("comm_pending");
-        const r = await call(`/api/games/${id}/advance`, { roundNumber: g.currentRound, stage: "COMMUNICATION" });
+        const r = await call(`/api/games/${id}/advance`, { roundNumber: g.currentRound, stage: "COMMUNICATION", human });
         if (r.data.game) setGame(r.data.game);
         if (!r.ok) {
           if (r.data.code === "busy") await waitUntilIdle();
@@ -111,8 +124,9 @@ export function LiveView({ id }: { id: string }) {
       }
 
       g = gameRef.current!;
+      const humanDecision = hs && !g.inProgress?.submitted.decisions[hs] ? await askHuman("decision") : undefined;
       setView("deliberation");
-      const r = await call(`/api/games/${id}/advance`, { roundNumber: g.currentRound, stage: "DECISION" });
+      const r = await call(`/api/games/${id}/advance`, { roundNumber: g.currentRound, stage: "DECISION", human: humanDecision });
       if (!r.ok) {
         if (r.data.game) setGame(r.data.game);
         if (r.data.code === "busy") await waitUntilIdle();
@@ -210,6 +224,11 @@ export function LiveView({ id }: { id: string }) {
   const earlierRounds = showingLast && lastRound ? game.rounds.slice(0, -1) : game.rounds;
 
   const statusFor = (slot: "A" | "B"): string => {
+    if (humanSlot) {
+      const mine = slot === humanSlot;
+      if (view === "human_message" || view === "human_decision") return mine ? t.stYourTurn : t.stWaitingForYou;
+      if (mine && (view === "comm_pending" || view === "deliberation")) return t.stSealed;
+    }
     switch (view) {
       case "comm_pending":
         return t.stPreparing;
@@ -234,13 +253,17 @@ export function LiveView({ id }: { id: string }) {
         return t.stWaiting;
     }
   };
+  const humanSlot = game.players.find((p) => p.provider === "human")?.id ?? null;
   const active = view === "comm_pending" || view === "deliberation";
-  const stageIndex = view === "comm_pending" || view === "comm_reveal" ? 1 : view === "deliberation" || view === "locked" || view === "reaction" ? 2 : view === "countdown" || view === "reveal" ? 3 : ip?.communication ? 2 : 0;
+  const humanTurn = view === "human_message" || view === "human_decision";
+  const stageIndex = view === "human_message" || view === "comm_pending" || view === "comm_reveal" ? 1 : view === "human_decision" ? 2 : view === "deliberation" || view === "locked" || view === "reaction" ? 2 : view === "countdown" || view === "reveal" ? 3 : ip?.communication ? 2 : 0;
   // Post-message thoughts: from the locked (not yet revealed) round during the reaction, else the last completed round.
   const afterRound = view === "reaction" || view === "countdown" ? pendingRound : showingLast ? lastRound : null;
 
   const banner = {
     idle: game.status === "COMPLETED" ? t.bannerAllClosed : ip?.communication ? t.bannerMsgsPending : lastRound ? t.bannerBetween : t.bannerInCustody,
+    human_message: t.bannerCommPending,
+    human_decision: t.bannerDeliberation,
     comm_pending: t.bannerCommPending,
     comm_reveal: t.bannerCommReveal,
     deliberation: t.bannerDeliberation,
@@ -341,6 +364,20 @@ export function LiveView({ id }: { id: string }) {
         {card(pb, "B")}
       </section>
 
+      {/* Your turn (human player) */}
+      {humanTurn && humanSlot && (
+        <HumanTurn
+          key={`${game.currentRound}-${view}`}
+          mode={view === "human_message" ? "message" : "decision"}
+          otherName={(humanSlot === "A" ? pb : pa).persona.name}
+          limitSeconds={game.config.responseTimeLimitSeconds ?? 60}
+          onSubmit={(h) => {
+            humanResolve.current?.(h);
+            humanResolve.current = null;
+          }}
+        />
+      )}
+
       {/* Round transcript: thoughts → message → thoughts after reading → statement */}
       <section className="relative mt-4 overflow-hidden border border-edge bg-panel/60 p-5">
         {(view === "comm_pending" || view === "deliberation") && <div className="scan absolute inset-0" />}
@@ -364,7 +401,17 @@ export function LiveView({ id }: { id: string }) {
               message={messages?.[k]}
               after={afterRound?.decisions[k]}
               statement={revealRound?.decisions[k]}
-              pending={view === "comm_pending" ? "writing" : view === "deliberation" ? "deciding" : null}
+              pending={
+                slot === humanSlot
+                  ? view === "comm_pending"
+                    ? "sealed"
+                    : null
+                  : view === "comm_pending"
+                    ? "writing"
+                    : view === "deliberation"
+                      ? "deciding"
+                      : null
+              }
               animate={{ message: view === "comm_reveal", after: view === "reaction", statement: view === "reveal" }}
             />
           ))}
@@ -390,10 +437,10 @@ export function LiveView({ id }: { id: string }) {
         )}
         {game.status !== "COMPLETED" && game.status !== "RUNNING" && (
           <>
-            <button onClick={() => controlAction("resume")} disabled={active || ["locked", "reaction", "countdown", "comm_reveal"].includes(view)} className="border border-lamp bg-lamp px-4 py-2 text-ink hover:brightness-110 disabled:opacity-40">
+            <button onClick={() => controlAction("resume")} disabled={active || ["locked", "reaction", "countdown", "comm_reveal", "human_message", "human_decision"].includes(view)} className="border border-lamp bg-lamp px-4 py-2 text-ink hover:brightness-110 disabled:opacity-40">
               {game.status === "READY" ? t.startAuto : t.resumeAuto}
             </button>
-            <button onClick={runRound} disabled={active || ["locked", "reaction", "countdown", "comm_reveal"].includes(view)} className="border border-lamp px-4 py-2 text-lamp hover:bg-lamp hover:text-ink disabled:opacity-40">
+            <button onClick={runRound} disabled={active || ["locked", "reaction", "countdown", "comm_reveal", "human_message", "human_decision"].includes(view)} className="border border-lamp px-4 py-2 text-lamp hover:bg-lamp hover:text-ink disabled:opacity-40">
               {ip ? t.continueRound : t.startNext}
             </button>
           </>

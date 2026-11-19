@@ -64,8 +64,22 @@ export interface ExperimentConfig {
   promptVersions: PromptVersions;
 }
 
+/** What a human player submits from the browser for one stage. */
+export interface HumanInput {
+  message?: string;
+  thoughts?: string;
+  leaning?: Action | null;
+  action?: Action;
+  secondsTaken?: number;
+}
+
 export interface CommunicationEntry {
   message: string;
+  /** Submitted by the human player rather than a model. */
+  byHuman?: boolean;
+  secondsTaken?: number;
+  /** Set in public views while a human is playing: the opponent's thoughts are withheld until the game ends. */
+  thoughtsHidden?: boolean;
   /** The suspect's own private thoughts, written before the message (required field). Spectators only. */
   writtenThoughts?: string;
   /** Provider reasoning summary written before the message. Spectators only. */
@@ -81,6 +95,9 @@ export interface CommunicationEntry {
 
 export interface DecisionEntry {
   action: Action;
+  byHuman?: boolean;
+  secondsTaken?: number;
+  thoughtsHidden?: boolean;
   /** Older rounds only; no longer requested. */
   explanation: string;
   /** The suspect's own private thoughts, written before choosing (required field). Spectators only. */

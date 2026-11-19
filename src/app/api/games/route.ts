@@ -17,8 +17,8 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const state = await createGame({
-      playerA: { provider: String(body?.playerA?.provider ?? "openai"), model: String(body?.playerA?.model ?? "") },
-      playerB: { provider: String(body?.playerB?.provider ?? "anthropic"), model: String(body?.playerB?.model ?? "") },
+      playerA: { provider: String(body?.playerA?.provider ?? "openai"), model: String(body?.playerA?.model ?? ""), name: body?.playerA?.name },
+      playerB: { provider: String(body?.playerB?.provider ?? "anthropic"), model: String(body?.playerB?.model ?? ""), name: body?.playerB?.name },
       totalRounds: body?.totalRounds === undefined ? undefined : Number(body.totalRounds),
       memoryStartRound: body?.memoryStartRound === undefined ? undefined : Number(body.memoryStartRound),
       language: body?.language === "zh" ? "zh" : "en",

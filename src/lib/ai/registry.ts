@@ -12,6 +12,7 @@ const KNOWN_MODELS = {
   anthropic: ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5", "claude-fable-5-2"],
   deepseek: ["deepseek-chat", "deepseek-reasoner"],
   mock: ["mock-random-v1"],
+  human: ["human"],
 };
 
 function withDefault(defaultModel: string, known: string[]): string[] {
@@ -46,6 +47,18 @@ export const PROVIDERS = {
     defaultParams: (model: string) => DeepSeekPlayer.defaultParams(model),
     create: (c: PlayerConfig) => new DeepSeekPlayer(c.name, c.model, c.params),
     available: () => !!process.env.DEEPSEEK_API_KEY,
+  },
+  /** You play this suspect from the browser; never called through an API. */
+  human: {
+    label: "Human (you play)",
+    displayName: "You",
+    defaultModel: () => "human",
+    models: () => KNOWN_MODELS.human,
+    defaultParams: () => ({}),
+    create: (): AIPlayer => {
+      throw new Error("A human player is not called through an API");
+    },
+    available: () => true,
   },
   mock: {
     label: "Mock (offline testing)",

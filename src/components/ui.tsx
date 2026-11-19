@@ -121,12 +121,22 @@ export function ThoughtBlock({
   color,
   animate = false,
 }: {
-  entry: { writtenThoughts?: string; thoughts?: string | null; thoughtsTrimmed?: boolean; thoughtsTranslatedFrom?: Lang };
+  entry: { writtenThoughts?: string; thoughts?: string | null; thoughtsTrimmed?: boolean; thoughtsTranslatedFrom?: Lang; thoughtsHidden?: boolean };
   label: string;
   color: string;
   animate?: boolean;
 }) {
   const t = useT();
+  if (entry.thoughtsHidden)
+    return (
+      <div className={animate ? "rise" : ""}>
+        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-dim">
+          <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: color, opacity: 0.7 }} />
+          {label}
+        </div>
+        <p className="mt-1.5 border-l border-dashed border-zinc-800 pl-3 text-xs italic text-zinc-600">{t.hiddenUntilEnd}</p>
+      </div>
+    );
   if (!entry.writtenThoughts)
     return <Thoughts text={entry.thoughts} label={label} color={color} trimmed={entry.thoughtsTrimmed} translatedFrom={entry.thoughtsTranslatedFrom} animate={animate} />;
   return (

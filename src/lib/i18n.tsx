@@ -189,6 +189,25 @@ const en = {
   compiling: "Compiling report",
   chartLabel: "Cumulative prison years by round",
   historyArrow: "HISTORY →",
+  // human player
+  yourName: "Your name in the story",
+  yourNameHint: "The other suspect will call you this. Don't use a model or company name.",
+  yourTurnMessage: (name: string) => `Your turn: write to ${name}`,
+  yourTurnDecide: "Your turn: testify or stay silent?",
+  messageSealedNote: (name: string) =>
+    `Your message is sealed as soon as you send it. Only then does ${name} write theirs, and both are revealed together.`,
+  decideNote: (name: string) => `${name} is making the same choice. Neither of you sees the other's decision until both are in.`,
+  timeLeft: (n: number) => `${n}s left · the other suspect has the same one-minute limit`,
+  timeUp: "Time's up — decide now",
+  yourThoughts: "Your private thoughts (optional, never shown to the other suspect)",
+  yourThoughtsPlaceholder: "What's going through your head?",
+  messagePlaceholder: "What do you want to tell them?",
+  leaningOptional: "Leaning (optional, private):",
+  sendMessage: "Seal & send",
+  hiddenUntilEnd: "Hidden until the game ends — they can't read your mind either.",
+  sealedWaiting: "Your message is sealed · waiting for the other suspect",
+  stYourTurn: "Your turn",
+  stWaitingForYou: "Waiting for you",
 };
 
 export type Dict = typeof en;
@@ -364,6 +383,23 @@ const zh: Dict = {
   compiling: "正在生成报告",
   chartLabel: "各轮累计刑期",
   historyArrow: "历史 →",
+  yourName: "你在故事中的名字",
+  yourNameHint: "另一名嫌疑人会这样称呼你。不要使用模型或公司的名字。",
+  yourTurnMessage: (name: string) => `轮到你了：给 ${name} 写一条消息`,
+  yourTurnDecide: "轮到你了：告发还是沉默？",
+  messageSealedNote: (name: string) => `你的消息一发出就会被封存。之后 ${name} 才会写消息，两条消息同时揭晓。`,
+  decideNote: (name: string) => `${name} 也在作同样的选择。双方都提交之前，谁也看不到对方的决定。`,
+  timeLeft: (n: number) => `剩余 ${n} 秒 · 另一名嫌疑人也有同样的一分钟限制`,
+  timeUp: "时间到——请立即决定",
+  yourThoughts: "你的私下想法（可选，另一名嫌疑人永远看不到）",
+  yourThoughtsPlaceholder: "你此刻在想什么？",
+  messagePlaceholder: "你想对对方说什么？",
+  leaningOptional: "倾向（可选，私下）：",
+  sendMessage: "封存并发送",
+  hiddenUntilEnd: "游戏结束前隐藏——对方也看不到你的想法。",
+  sealedWaiting: "你的消息已封存 · 等待另一名嫌疑人",
+  stYourTurn: "轮到你了",
+  stWaitingForYou: "等你行动",
 };
 
 export const STRINGS: Record<Lang, Dict> = { en, zh };

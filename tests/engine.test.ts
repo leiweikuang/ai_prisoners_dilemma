@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { promises as fs } from "fs";
-import { advance, control, createGame, toPublic, nextStage } from "@/lib/game/engine";
+import { advance, control, createGame, toExport, toPublic, nextStage } from "@/lib/game/engine";
 import { getStore } from "@/lib/store";
 import { MockPlayer } from "@/lib/ai/mock";
 import { computeSentences } from "@/lib/game/payoff";
@@ -271,5 +271,68 @@ describe("model validation", () => {
     const g = await createGame({ playerA: { provider: "anthropic", model: "claude-sonnet-5-5" }, playerB: { provider: "mock", model: "m" } });
     expect(g.players[0].model).toBe("claude-sonnet-5-5");
     delete process.env.ANTHROPIC_API_KEY;
+  });
+});
+
+describe("human player", () => {
+  const mkHuman = () =>
+    createGame({ playerA: { provider: "human", model: "", name: "Jerry" }, playerB: { provider: "mock", model: "m" }, totalRounds: 2, memoryStartRound: 1 });
+
+  it("validates the human setup", async () => {
+    await expect(createGame({ playerA: { provider: "human", model: "", name: "" }, playerB: { provider: "mock", model: "m" } })).rejects.toMatchObject({ code: "bad_config" });
+    await expect(createGame({ playerA: { provider: "human", model: "", name: "Claude" }, playerB: { provider: "mock", model: "m" } })).rejects.toMatchObject({ code: "bad_config" });
+    await expect(createGame({ playerA: { provider: "human", model: "", name: "Riley" }, playerB: { provider: "mock", model: "m" } })).rejects.toMatchObject({ code: "bad_config" });
+    await expect(createGame({ playerA: { provider: "human", model: "", name: "A" }, playerB: { provider: "human", model: "", name: "B" } })).rejects.toMatchObject({ code: "bad_config" });
+    const g = await mkHuman();
+    expect(g.players[0]).toMatchObject({ provider: "human", name: "Jerry", persona: { name: "Jerry" } });
+  });
+
+  it("requires the human's input, seals it first, and never shows it to the AI before the AI answers", async () => {
+    const g = await mkHuman();
+    await expect(advance(g.gameId, { roundNumber: 1, stage: "COMMUNICATION" })).rejects.toMatchObject({ code: "human_input_required" });
+    const spy = vi.spyOn(MockPlayer.prototype, "complete");
+    let s = await advance(g.gameId, { roundNumber: 1, stage: "COMMUNICATION" }, { message: "HUMAN-MSG-1", thoughts: "HUMAN-THOUGHT", leaning: "DENY", secondsTaken: 12 });
+    expect(spy).toHaveBeenCalledTimes(1); // only the AI
+    expect(s.inProgress!.communication!.playerA).toMatchObject({ message: "HUMAN-MSG-1", byHuman: true, writtenThoughts: "HUMAN-THOUGHT", secondsTaken: 12 });
+    // The AI's message prompt never contained the human's message.
+    const aiMsgCall = s.callLog.find((c) => c.stage === "COMMUNICATION" && c.slot === "B")!;
+    expect(aiMsgCall.userPrompt).not.toContain("HUMAN-MSG-1");
+    expect(aiMsgCall.userPrompt).toContain("Jerry");
+    await expect(advance(g.gameId, { roundNumber: 1, stage: "DECISION" })).rejects.toMatchObject({ code: "human_input_required" });
+    await expect(advance(g.gameId, { roundNumber: 1, stage: "DECISION" }, { message: "x" })).rejects.toMatchObject({ code: "bad_request" });
+    s = await advance(g.gameId, { roundNumber: 1, stage: "DECISION" }, { action: "DENY", thoughts: "HUMAN-DECIDE" });
+    expect(s.rounds[0].decisions.playerA).toMatchObject({ action: "DENY", byHuman: true });
+    // The AI read the human's message, but never the human's thoughts.
+    const aiDecision = s.callLog.find((c) => c.stage === "DECISION" && c.slot === "B")!;
+    expect(aiDecision.userPrompt).toContain("HUMAN-MSG-1");
+    expect(s.callLog.every((c) => !c.userPrompt.includes("HUMAN-THOUGHT") && !c.userPrompt.includes("HUMAN-DECIDE"))).toBe(true);
+  });
+
+  it("hides the AI's thoughts from the page until the game ends, and the log too", async () => {
+    const g = await mkHuman();
+    await advance(g.gameId, { roundNumber: 1, stage: "COMMUNICATION" }, { message: "hi" });
+    let s = (await getStore().get(g.gameId))!;
+    let pub = toPublic(s);
+    expect(pub.inProgress!.communication!.playerB).toMatchObject({ thoughtsHidden: true, privateLeaning: null, thoughts: null });
+    expect(pub.inProgress!.communication!.playerB.writtenThoughts).toBeUndefined();
+    expect(pub.inProgress!.communication!.playerB.message).toBeTruthy(); // the message itself is revealed
+    expect(JSON.stringify(pub)).not.toContain(s.inProgress!.communication!.playerB.writtenThoughts!);
+    expect(toExport(s).callLog).toEqual([]);
+    await advance(g.gameId, { roundNumber: 1, stage: "DECISION" }, { action: "CONFESS" });
+    await advance(g.gameId, { roundNumber: 2, stage: "COMMUNICATION" }, { message: "again" });
+    s = await advance(g.gameId, { roundNumber: 2, stage: "DECISION" }, { action: "DENY" });
+    expect(s.status).toBe("COMPLETED");
+    pub = toPublic(s);
+    expect(pub.rounds[0].communication!.playerB.writtenThoughts).toBeTruthy();
+    expect(toExport(s).callLog.length).toBeGreaterThan(0);
+  });
+
+  it("retries only the AI if it fails after the human has submitted", async () => {
+    const g = await mkHuman();
+    vi.spyOn(MockPlayer.prototype, "complete").mockRejectedValueOnce(Object.assign(new Error("boom"), { status: 500 })).mockRejectedValueOnce(Object.assign(new Error("boom"), { status: 500 }));
+    await expect(advance(g.gameId, { roundNumber: 1, stage: "COMMUNICATION" }, { message: "sealed once" })).rejects.toMatchObject({ code: "stage_incomplete" });
+    vi.restoreAllMocks();
+    const s = await advance(g.gameId, { roundNumber: 1, stage: "COMMUNICATION" }); // no human input needed again
+    expect(s.inProgress!.communication!.playerA.message).toBe("sealed once");
   });
 });

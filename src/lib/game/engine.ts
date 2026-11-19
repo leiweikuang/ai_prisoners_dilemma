@@ -11,6 +11,7 @@ import { createPlayer, isProviderId, PROVIDERS } from "../ai/registry";
 import { backoffMs, classifyError, MAX_ATTEMPTS } from "../ai/retry";
 import { PROMPT_VERSIONS } from "../prompts";
 import { personaNames } from "../profiles";
+import { findForbiddenTerms } from "../prompts/guard";
 import { parseDecision, parseMessage } from "../prompts/schemas";
 import { scenarioForRound } from "../prompts/scenarios";
 import { getStore, VersionConflictError } from "../store";
@@ -24,6 +25,7 @@ import type {
   PlayerSlot,
   PublicGameState,
   RoundResult,
+  HumanInput,
   Lang,
   Stage,
 } from "./types";
@@ -88,11 +90,29 @@ export async function withTimeLimit<T>(seconds: number, fn: (signal: AbortSignal
   }
 }
 
+/**
+ * A human player's in-story name. It is read by the AI suspect, so it must not
+ * give away the setup (no model or company names, no experimental terms).
+ */
+function humanName(raw: string | undefined): string {
+  const name = (raw ?? "").trim().replace(/\s+/g, " ");
+  if (!name) throw new EngineError("Enter the name you want to be called in the story", 400, "bad_config");
+  if (name.length > 24 || !/^[\p{L}\p{N} '._-]+$/u.test(name))
+    throw new EngineError("Use up to 24 letters, numbers or spaces for your name", 400, "bad_config");
+  if (findForbiddenTerms(name).length) throw new EngineError("That name can't be used in the story; please pick another", 400, "bad_config");
+  return name;
+}
+
+export function humanSlotOf(state: Pick<GameState, "players">): PlayerSlot | null {
+  return state.players.find((p) => p.provider === "human")?.id ?? null;
+}
+
 // ---------------------------------------------------------------- creation
 
 export interface CreateGameInput {
-  playerA: { provider: string; model: string };
-  playerB: { provider: string; model: string };
+  /** `name` is used only for a human player: what the AI suspect will call them. */
+  playerA: { provider: string; model: string; name?: string };
+  playerB: { provider: string; model: string; name?: string };
   totalRounds?: number;
   memoryStartRound?: number;
   language?: Lang;
@@ -114,7 +134,7 @@ export function createGameState(input: CreateGameInput): GameState {
   if (!(memoryStartRound >= 1 && memoryStartRound <= totalRounds + 1))
     throw new EngineError("memoryStartRound must be between 1 and totalRounds + 1", 400, "bad_config");
 
-  const mk = (slot: PlayerSlot, cfg: { provider: string; model: string }): PlayerConfig => {
+  const mk = (slot: PlayerSlot, cfg: { provider: string; model: string; name?: string }): PlayerConfig => {
     if (!isProviderId(cfg.provider)) throw new EngineError(`Unknown provider ${cfg.provider}`, 400, "bad_config");
     const prov = PROVIDERS[cfg.provider];
     if (!prov.available()) throw new EngineError(`Provider ${cfg.provider} is not configured (missing API key?)`, 400, "provider_unavailable");
@@ -125,11 +145,19 @@ export function createGameState(input: CreateGameInput): GameState {
       throw new EngineError(`Model "${model}" is not available for ${prov.label}`, 400, "bad_config");
     // Models with built-in web access are not allowed: suspects must not search the internet.
     if (/search|deep-research|browse/i.test(model)) throw new EngineError("Models with built-in web search are not allowed", 400, "bad_config");
+    if (cfg.provider === "human") {
+      const name = humanName(cfg.name);
+      return { slot, name, provider: "human", model: "human", params: {}, persona: { name } };
+    }
     return { slot, name: prov.displayName, provider: cfg.provider, model, params: prov.defaultParams(model), persona: { name: personas[slot] } };
   };
+  if (input.playerA.provider === "human" && input.playerB.provider === "human")
+    throw new EngineError("Only one suspect can be played by a human", 400, "bad_config");
   const personas = personaNames(input.playerA.provider, input.playerB.provider);
   const a = mk("A", input.playerA);
   const b = mk("B", input.playerB);
+  if (a.persona.name.toLowerCase() === b.persona.name.toLowerCase())
+    throw new EngineError("Pick a name that is different from the other suspect's", 400, "bad_config");
   if (a.name === b.name) {
     a.name = `${a.name} A`;
     b.name = `${b.name} B`;
@@ -174,8 +202,38 @@ export async function createGame(input: CreateGameInput) {
 
 // ---------------------------------------------------------------- views
 
-export function toPublic(state: GameState): PublicGameState {
-  const { callLog: _c, lock, inProgress, ...rest } = state;
+type WithThoughts = { writtenThoughts?: string; thoughts?: string | null; privateLeaning?: unknown; thoughtsHidden?: boolean };
+
+function hide<T extends WithThoughts>(e: T): T {
+  return { ...e, writtenThoughts: undefined, thoughts: null, ...("privateLeaning" in e ? { privateLeaning: null } : {}), thoughtsHidden: true };
+}
+
+/**
+ * While a human is playing, the AI opponent's inner monologue, reasoning
+ * summary and private leaning are withheld from the page until the game ends:
+ * the AI can never see the human's thoughts, so the human can't see the AI's.
+ */
+function withoutOpponentThoughts(state: GameState): GameState {
+  const humanSlot = humanSlotOf(state);
+  if (!humanSlot || state.status === "COMPLETED") return state;
+  const ai = humanSlot === "A" ? "playerB" : "playerA";
+  const rounds = state.rounds.map((r) => ({
+    ...r,
+    communication: r.communication ? { ...r.communication, [ai]: hide(r.communication[ai]) } : r.communication,
+    decisions: { ...r.decisions, [ai]: hide(r.decisions[ai]) },
+  }));
+  const ip = state.inProgress;
+  const inProgress = ip
+    ? {
+        ...ip,
+        communication: ip.communication ? { ...ip.communication, [ai]: hide(ip.communication[ai]) } : ip.communication,
+      }
+    : ip;
+  return { ...state, rounds, inProgress } as GameState;
+}
+
+export function toPublic(full: GameState): PublicGameState {
+  const { callLog: _c, lock, inProgress, ...rest } = withoutOpponentThoughts(full);
   void _c;
   let pub: PublicGameState["inProgress"] = null;
   if (inProgress) {
@@ -202,6 +260,10 @@ export function toExport(state: GameState) {
     if (!ip || c.roundNumber < ip.roundNumber) return true;
     return c.roundNumber === ip.roundNumber && c.stage === "COMMUNICATION" && !!ip.communication;
   });
+  // With a human playing, the log (which holds the AI's raw answers and
+  // inner monologue) is withheld until the game is over.
+  if (humanSlotOf(state) && state.status !== "COMPLETED")
+    return { ...toPublic(state), callLog: [], callLogWithheld: "The full log is available once the game has ended." };
   return { ...toPublic(state), callLog };
 }
 
@@ -268,7 +330,7 @@ export interface AdvanceRequest {
  * round/stage it expects; stale or duplicate requests are rejected (409)
  * instead of being executed twice.
  */
-export async function advance(gameId: string, req: AdvanceRequest): Promise<GameState> {
+export async function advance(gameId: string, req: AdvanceRequest, human?: HumanInput): Promise<GameState> {
   const store = getStore();
   const loaded = await store.get(gameId);
   if (!loaded) throw new EngineError("Game not found", 404, "not_found");
@@ -279,6 +341,14 @@ export async function advance(gameId: string, req: AdvanceRequest): Promise<Game
   const expected = nextStage(state);
   if (req.roundNumber !== state.currentRound || req.stage !== expected)
     throw new EngineError(`Stale request: expected round ${state.currentRound} stage ${expected}`, 409, "stale");
+
+  // A human player's input must arrive with the request that runs the stage
+  // (it is sealed first, then the AI is asked; neither sees the other's).
+  const humanSlot = humanSlotOf(state);
+  const humanPending =
+    humanSlot !== null &&
+    !(req.stage === "COMMUNICATION" ? state.inProgress?.sealedCommunication[humanSlot] : state.inProgress?.sealedDecisions[humanSlot]);
+  if (humanPending) validateHumanInput(req.stage, human);
 
   // Acquire lock (compare-and-swap).
   const token = randomUUID();
@@ -303,8 +373,8 @@ export async function advance(gameId: string, req: AdvanceRequest): Promise<Game
 
   let failure: unknown = null;
   try {
-    if (req.stage === "COMMUNICATION") await runCommunication(state, persist);
-    else await runDecision(state, persist);
+    if (req.stage === "COMMUNICATION") await runCommunication(state, persist, humanPending ? human : undefined);
+    else await runDecision(state, persist, humanPending ? human : undefined);
   } catch (e) {
     failure = e;
   }
@@ -489,9 +559,36 @@ async function collect<T>(
   }
 }
 
-async function runCommunication(state: GameState, persist: () => Promise<void>) {
+function validateHumanInput(stage: Stage, h: HumanInput | undefined) {
+  if (!h) throw new EngineError("Waiting for your input", 409, "human_input_required");
+  if (h.thoughts !== undefined && (typeof h.thoughts !== "string" || h.thoughts.length > 4000))
+    throw new EngineError("Thoughts are too long", 400, "bad_request");
+  if (stage === "COMMUNICATION") {
+    if (typeof h.message !== "string" || !h.message.trim()) throw new EngineError("Write a message first", 400, "bad_request");
+    if (h.message.length > 2000) throw new EngineError("Message is too long (max 2000 characters)", 400, "bad_request");
+    if (h.leaning !== undefined && h.leaning !== null && h.leaning !== "CONFESS" && h.leaning !== "DENY")
+      throw new EngineError("Invalid leaning", 400, "bad_request");
+  } else if (h.action !== "CONFESS" && h.action !== "DENY") {
+    throw new EngineError("Choose TESTIFY or SILENT", 400, "bad_request");
+  }
+}
+
+async function runCommunication(state: GameState, persist: () => Promise<void>, human?: HumanInput) {
   const round = state.inProgress!;
-  const pending = SLOTS.filter((s) => !round.sealedCommunication[s]);
+  const humanSlot = humanSlotOf(state);
+  if (humanSlot && human && !round.sealedCommunication[humanSlot]) {
+    round.sealedCommunication[humanSlot] = {
+      byHuman: true,
+      writtenThoughts: human.thoughts?.trim() ?? "",
+      thoughts: null,
+      message: human.message!.trim(),
+      privateLeaning: human.leaning ?? null,
+      secondsTaken: human.secondsTaken,
+      timestamp: new Date().toISOString(),
+    };
+    await persist(); // sealed before the AI is asked
+  }
+  const pending = SLOTS.filter((s) => !round.sealedCommunication[s] && s !== humanSlot);
   // Prompts are built from the same snapshot before any call is made.
   const prompts = Object.fromEntries(pending.map((s) => [s, buildMessagePrompt(state, round, s)]));
   await collect(pending, async (slot) => {
@@ -508,9 +605,22 @@ async function runCommunication(state: GameState, persist: () => Promise<void>) 
   round.stage = "DECISION";
 }
 
-async function runDecision(state: GameState, persist: () => Promise<void>) {
+async function runDecision(state: GameState, persist: () => Promise<void>, human?: HumanInput) {
   const round = state.inProgress!;
-  const pending = SLOTS.filter((s) => !round.sealedDecisions[s]);
+  const humanSlot = humanSlotOf(state);
+  if (humanSlot && human && !round.sealedDecisions[humanSlot]) {
+    round.sealedDecisions[humanSlot] = {
+      byHuman: true,
+      action: human.action!,
+      explanation: "",
+      writtenThoughts: human.thoughts?.trim() ?? "",
+      thoughts: null,
+      secondsTaken: human.secondsTaken,
+      timestamp: new Date().toISOString(),
+    };
+    await persist();
+  }
+  const pending = SLOTS.filter((s) => !round.sealedDecisions[s] && s !== humanSlot);
   const prompts = Object.fromEntries(pending.map((s) => [s, buildDecisionPrompt(state, round, s)]));
   await collect(pending, async (slot) => {
     const { parsed: r, reasoning } = await callWithRetries(state, round, "DECISION", slot, prompts[slot], parseDecision);
