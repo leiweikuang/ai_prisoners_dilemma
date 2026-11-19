@@ -170,9 +170,9 @@ describe("response rules", () => {
 });
 
 describe("language", () => {
-  it("defaults to 5 rounds with history from round 1", async () => {
+  it("defaults to 3 rounds with history from round 1", async () => {
     const g = await createGame({ playerA: { provider: "mock", model: "m" }, playerB: { provider: "mock", model: "m" } });
-    expect(g.totalRounds).toBe(5);
+    expect(g.totalRounds).toBe(3);
     expect(g.memoryStartRound).toBe(1);
     expect(g.phase).toBe("HISTORY_AWARE");
   });

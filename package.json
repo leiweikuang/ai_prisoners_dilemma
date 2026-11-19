@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "diagnose:claude": "node --env-file=.env.local scripts/diagnose-claude.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.10.0",
