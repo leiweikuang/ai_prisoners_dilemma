@@ -336,3 +336,29 @@ describe("human player", () => {
     expect(s.inProgress!.communication!.playerA.message).toBe("sealed once");
   });
 });
+
+describe("seal timing", () => {
+  it("seals the faster suspect first and records how long each took, without revealing content", async () => {
+    const g = await mk();
+    const s0 = (await getStore().get(g.gameId))!;
+    s0.players[0].params = { ...s0.players[0].params, delayMs: 50 };
+    s0.players[1].params = { ...s0.players[1].params, delayMs: 600 };
+    await getStore().save(s0, s0.version);
+
+    const running = advance(g.gameId, { roundNumber: 1, stage: "COMMUNICATION" });
+    // Mid-stage: A has sealed, B has not; nothing has been revealed.
+    await new Promise((r) => setTimeout(r, 350));
+    const mid = toPublic((await getStore().get(g.gameId))!);
+    expect(mid.inProgress?.submitted.communication).toEqual({ A: true, B: false });
+    expect(mid.inProgress?.sealedAfterMs.communication.A).toBeGreaterThanOrEqual(0);
+    expect(mid.inProgress?.sealedAfterMs.communication.B).toBeNull();
+    expect(mid.inProgress?.communication).toBeNull();
+    expect(JSON.stringify(mid)).not.toMatch(/"message":/);
+    await running;
+
+    const s = await advance(g.gameId, { roundNumber: 1, stage: "DECISION" });
+    const t = s.rounds[0].sealedAfterMs!;
+    expect(t.decisions.A!).toBeLessThan(t.decisions.B!);
+    expect(t.communication.A!).toBeLessThan(t.communication.B!);
+  });
+});

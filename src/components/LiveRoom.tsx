@@ -39,6 +39,7 @@ export function LiveView({ id }: { id: string }) {
   const [game, setGameState] = useState<PublicGameState | null>(null);
   const [view, setView] = useState<View>("idle");
   const [countdown, setCountdown] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
   const [pendingRound, setPendingRound] = useState<RoundResult | null>(null);
   const skipRef = useRef<(() => void) | null>(null);
   /** A pause the spectator can skip. */
@@ -88,6 +89,32 @@ export function LiveView({ id }: { id: string }) {
     return gameRef.current;
   }, [refresh]);
 
+  /**
+   * While a stage runs, poll so each room shows "sealed" the moment its suspect
+   * answers. Only the sealed flags and timings are taken: nothing is revealed early.
+   */
+  const watch = (roundNumber: number) => {
+    let on = true;
+    (async () => {
+      while (on) {
+        await sleep(700);
+        if (!on) break;
+        const r = await call(`/api/games/${id}`).catch(() => null);
+        const pg = r?.ok ? (r.data.game as PublicGameState) : null;
+        const cur = gameRef.current;
+        if (!on || !pg?.inProgress || !cur || pg.inProgress.roundNumber !== roundNumber) continue;
+        setGame({
+          ...cur,
+          busy: pg.busy,
+          inProgress: { ...pg.inProgress, stage: cur.inProgress?.stage ?? pg.inProgress.stage, communication: cur.inProgress?.communication ?? null },
+        });
+      }
+    })();
+    return () => {
+      on = false;
+    };
+  };
+
   // A human player's turn: the round waits here until they submit.
   const humanResolve = useRef<((h: HumanInput) => void) | null>(null);
   const askHuman = (mode: "message" | "decision") =>
@@ -112,7 +139,8 @@ export function LiveView({ id }: { id: string }) {
         // You write first; your message is sealed before the AI is asked for its own.
         const human = hs && !g.inProgress?.submitted.communication[hs] ? await askHuman("message") : undefined;
         setView("comm_pending");
-        const r = await call(`/api/games/${id}/advance`, { roundNumber: g.currentRound, stage: "COMMUNICATION", human });
+        const stopWatch = watch(g.currentRound);
+        const r = await call(`/api/games/${id}/advance`, { roundNumber: g.currentRound, stage: "COMMUNICATION", human }).finally(stopWatch);
         if (r.data.game) setGame(r.data.game);
         if (!r.ok) {
           if (r.data.code === "busy") await waitUntilIdle();
@@ -128,7 +156,8 @@ export function LiveView({ id }: { id: string }) {
       g = gameRef.current!;
       const humanDecision = hs && !g.inProgress?.submitted.decisions[hs] ? await askHuman("decision") : undefined;
       setView("deliberation");
-      const r = await call(`/api/games/${id}/advance`, { roundNumber: g.currentRound, stage: "DECISION", human: humanDecision });
+      const stopWatch = watch(g.currentRound);
+      const r = await call(`/api/games/${id}/advance`, { roundNumber: g.currentRound, stage: "DECISION", human: humanDecision }).finally(stopWatch);
       if (!r.ok) {
         if (r.data.game) setGame(r.data.game);
         if (r.data.code === "busy") await waitUntilIdle();
@@ -170,6 +199,13 @@ export function LiveView({ id }: { id: string }) {
       } catch {}
     })();
   }, [id, refresh, waitUntilIdle]);
+
+  // A clock for the live "still deciding" timers.
+  useEffect(() => {
+    if (view !== "comm_pending" && view !== "deliberation") return;
+    const t = setInterval(() => setNow(Date.now()), 200);
+    return () => clearInterval(t);
+  }, [view]);
 
   // Auto-advance while RUNNING.
   useEffect(() => {
@@ -297,13 +333,36 @@ export function LiveView({ id }: { id: string }) {
     return true;
   };
 
+  /** Which stage the race is on, and how long each suspect took to seal it. */
+  const raceStage: "communication" | "decisions" = view === "comm_pending" || view === "comm_reveal" ? "communication" : "decisions";
+  const raceTimings =
+    view === "comm_pending" || view === "deliberation" || view === "comm_reveal"
+      ? ip?.sealedAfterMs?.[raceStage]
+      : view === "locked" || view === "reaction" || view === "countdown"
+        ? pendingRound?.sealedAfterMs?.decisions
+        : view === "reveal"
+          ? revealRound?.sealedAfterMs?.decisions
+          : undefined;
+  const sealTime = (slot: "A" | "B") => {
+    const mine = raceTimings?.[slot];
+    if (mine == null) return null;
+    const theirs = raceTimings?.[slot === "A" ? "B" : "A"];
+    const first = theirs == null ? active : mine < theirs;
+    return `${t.sealedIn((mine / 1000).toFixed(1))}${first ? ` · ${t.sealedFirst}` : ""}`;
+  };
+  const stageStart = ip?.stageStartedAt?.[view === "comm_pending" ? "COMMUNICATION" : "DECISION"];
+  const elapsedSec = stageStart ? Math.max(0, Math.floor((now - Date.parse(stageStart)) / 1000)) : null;
+
   const room = (p: PlayerState, other: PlayerState, slot: "A" | "B") => {
     const k = slot === "A" ? "playerA" : "playerB";
     const color = providerColor(p.provider);
     const decision = revealRound?.decisions[k];
     const glass = glassFor(k);
-    const sealed = view === "locked" || view === "reaction" || view === "countdown";
-    const working = (view === "comm_pending" && slot !== humanSlot) || (view === "deliberation" && slot !== humanSlot) || (humanTurn && slot === humanSlot);
+    // Sealed while the other suspect is still working: this one answered first.
+    const sealedNow = active && !!ip?.submitted[raceStage][slot];
+    const sealed = view === "locked" || view === "reaction" || view === "countdown" || sealedNow;
+    const working = ((view === "comm_pending" || view === "deliberation") && slot !== humanSlot && !sealedNow) || (humanTurn && slot === humanSlot);
+    const timing = sealTime(slot);
     return (
       <section aria-label={`${t.room(slot)} · ${p.name}`} data-lit={litFor(slot)} className={`room flex min-h-[580px] flex-col ${working ? "scan" : ""}`}>
         {/* Ceiling tube */}
@@ -362,13 +421,14 @@ export function LiveView({ id }: { id: string }) {
           </div>
           <div className="mt-3 flex h-6 items-center gap-3 border-t border-edge pt-3">
             {working ? (
-              <Thinking label={statusFor(slot)} />
+              <Thinking label={humanTurn || elapsedSec === null ? statusFor(slot) : `${statusFor(slot)} · ${t.elapsed(elapsedSec)}`} />
             ) : decision ? (
               <span className="text-sm text-fog">
                 {t.thisCase}: <span className="font-semibold text-tube">{decision.prisonYears}</span> {t.yearUnit(decision.prisonYears)}
+                {timing && <span className="text-dim"> · {timing}</span>}
               </span>
             ) : (
-              <span className={`text-sm ${sealed ? "text-lamp" : "text-dim"}`}>{statusFor(slot)}</span>
+              <span className={`text-sm tabular-nums ${sealed ? "text-lamp" : "text-dim"}`}>{timing ?? statusFor(slot)}</span>
             )}
           </div>
         </div>

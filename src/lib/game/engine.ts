@@ -22,6 +22,7 @@ import type {
   CallRecord,
   GameState,
   InProgressRound,
+  SealTimings,
   PlayerConfig,
   PlayerSlot,
   PublicGameState,
@@ -233,6 +234,21 @@ function withoutOpponentThoughts(state: GameState): GameState {
   return { ...state, rounds, inProgress } as GameState;
 }
 
+/** How long each suspect took to seal each stage (ms from the stage's start). Reveals timing only, never content. */
+export function sealTimings(ip: InProgressRound): SealTimings {
+  const after = (st: Stage, e: { timestamp: string; byHuman?: boolean; secondsTaken?: number } | undefined) => {
+    if (!e) return null;
+    if (e.byHuman) return typeof e.secondsTaken === "number" ? e.secondsTaken * 1000 : null;
+    const start = ip.stageStartedAt?.[st];
+    const ms = start ? Date.parse(e.timestamp) - Date.parse(start) : NaN;
+    return Number.isFinite(ms) && ms >= 0 ? ms : null;
+  };
+  return {
+    communication: { A: after("COMMUNICATION", ip.sealedCommunication.A), B: after("COMMUNICATION", ip.sealedCommunication.B) },
+    decisions: { A: after("DECISION", ip.sealedDecisions.A), B: after("DECISION", ip.sealedDecisions.B) },
+  };
+}
+
 export function toPublic(full: GameState): PublicGameState {
   const { callLog: _c, lock, inProgress, ...rest } = withoutOpponentThoughts(full);
   void _c;
@@ -241,6 +257,7 @@ export function toPublic(full: GameState): PublicGameState {
     const { sealedCommunication, sealedDecisions, ...ip } = inProgress;
     pub = {
       ...ip,
+      sealedAfterMs: sealTimings(inProgress),
       submitted: {
         communication: { A: !!sealedCommunication.A, B: !!sealedCommunication.B },
         decisions: { A: !!sealedDecisions.A, B: !!sealedDecisions.B },
@@ -356,6 +373,9 @@ export async function advance(gameId: string, req: AdvanceRequest, human?: Human
   state = { ...state, lock: { token, stage: req.stage, roundNumber: req.roundNumber, acquiredAt: new Date().toISOString() } };
   recordConfigDrift(state);
   if (!state.inProgress) state.inProgress = startRound(state);
+  // The clock starts once per stage (a retry keeps the original start).
+  state.inProgress.stageStartedAt = { ...state.inProgress.stageStartedAt };
+  state.inProgress.stageStartedAt[req.stage] ??= new Date().toISOString();
   try {
     state = await store.save(state, state.version);
   } catch (e) {
@@ -595,11 +615,18 @@ async function runCommunication(state: GameState, persist: () => Promise<void>, 
   const prompts = Object.fromEntries(pending.map((s) => [s, buildMessagePrompt(state, round, s)]));
   await collect(pending, async (slot) => {
     const { parsed: r, reasoning, monologueFallback } = await callWithRetries(state, round, "COMMUNICATION", slot, prompts[slot], parseMessage);
-    const shown = await thoughtsForDisplay(state, round, "COMMUNICATION", slot, reasoning);
-    const t = limitWords(shown.text, thoughtWordLimitFor(state));
     const w = limitWords(r.thoughts, thoughtWordLimitFor(state));
-    round.sealedCommunication[slot] = { ...(monologueFallback ? { monologueFallback: true } : {}), writtenThoughts: w.text ?? "", thoughts: t.text, thoughtsTrimmed: t.trimmed, ...(shown.from ? { thoughtsTranslatedFrom: shown.from } : {}), message: r.message, privateLeaning: r.privateLeaning, timestamp: new Date().toISOString() };
+    const base = { ...(monologueFallback ? { monologueFallback: true } : {}), writtenThoughts: w.text ?? "", message: r.message, privateLeaning: r.privateLeaning, timestamp: new Date().toISOString() };
+    // Sealed the moment the answer arrives, so a faster suspect is seen sealing first.
+    const raw = limitWords(reasoning, thoughtWordLimitFor(state));
+    round.sealedCommunication[slot] = { ...base, thoughts: raw.text, thoughtsTrimmed: raw.trimmed };
     await persist(); // sealed: stored, never returned to the browser
+    const shown = await thoughtsForDisplay(state, round, "COMMUNICATION", slot, reasoning);
+    if (shown.from) {
+      const t = limitWords(shown.text, thoughtWordLimitFor(state));
+      round.sealedCommunication[slot] = { ...base, thoughts: t.text, thoughtsTrimmed: t.trimmed, thoughtsTranslatedFrom: shown.from };
+      await persist();
+    }
   });
   const { A, B } = round.sealedCommunication;
   if (!A || !B) throw new EngineError("Messages incomplete", 502, "stage_incomplete");
@@ -626,11 +653,17 @@ async function runDecision(state: GameState, persist: () => Promise<void>, human
   const prompts = Object.fromEntries(pending.map((s) => [s, buildDecisionPrompt(state, round, s)]));
   await collect(pending, async (slot) => {
     const { parsed: r, reasoning, monologueFallback } = await callWithRetries(state, round, "DECISION", slot, prompts[slot], parseDecision);
-    const shown = await thoughtsForDisplay(state, round, "DECISION", slot, reasoning);
-    const t = limitWords(shown.text, thoughtWordLimitFor(state));
     const w = limitWords(r.thoughts, thoughtWordLimitFor(state));
-    round.sealedDecisions[slot] = { ...(monologueFallback ? { monologueFallback: true } : {}), action: r.action, explanation: r.explanation, writtenThoughts: w.text ?? "", thoughts: t.text, thoughtsTrimmed: t.trimmed, ...(shown.from ? { thoughtsTranslatedFrom: shown.from } : {}), timestamp: new Date().toISOString() };
-    await persist();
+    const base = { ...(monologueFallback ? { monologueFallback: true } : {}), action: r.action, explanation: r.explanation, writtenThoughts: w.text ?? "", timestamp: new Date().toISOString() };
+    const raw = limitWords(reasoning, thoughtWordLimitFor(state));
+    round.sealedDecisions[slot] = { ...base, thoughts: raw.text, thoughtsTrimmed: raw.trimmed };
+    await persist(); // sealed the moment the answer arrives
+    const shown = await thoughtsForDisplay(state, round, "DECISION", slot, reasoning);
+    if (shown.from) {
+      const t = limitWords(shown.text, thoughtWordLimitFor(state));
+      round.sealedDecisions[slot] = { ...base, thoughts: t.text, thoughtsTrimmed: t.trimmed, thoughtsTranslatedFrom: shown.from };
+      await persist();
+    }
   });
   const { A, B } = round.sealedDecisions;
   if (!A || !B) throw new EngineError("Decisions incomplete", 502, "stage_incomplete");
@@ -656,6 +689,7 @@ export function finaliseRound(
     scenarioId: round.scenarioId,
     scenarioTitle: round.scenarioTitle,
     communication: round.communication,
+    sealedAfterMs: sealTimings(round),
     decisions: {
       playerA: { ...A, prisonYears: years.playerA },
       playerB: { ...B, prisonYears: years.playerB },

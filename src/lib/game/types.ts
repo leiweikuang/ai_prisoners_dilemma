@@ -124,6 +124,13 @@ export interface RoundResult {
   decisions: { playerA: DecisionEntry; playerB: DecisionEntry };
   cumulativeAfter: { playerA: number; playerB: number };
   completedAt: string;
+  /** How long each suspect took to seal each stage, in ms (absent on older rounds). */
+  sealedAfterMs?: SealTimings;
+}
+
+export interface SealTimings {
+  communication: { A: number | null; B: number | null };
+  decisions: { A: number | null; B: number | null };
 }
 
 /** A submission that is held by the engine and NOT revealed until both are in. */
@@ -140,6 +147,8 @@ export interface InProgressRound {
   scenarioTitle: string;
   stage: Stage;
   startedAt: string;
+  /** When each stage's interrogation began (the clock both suspects race against). */
+  stageStartedAt?: Partial<Record<Stage, string>>;
   sealedCommunication: SealedSubmissions<CommunicationEntry>;
   sealedDecisions: SealedSubmissions<Omit<DecisionEntry, "prisonYears">>;
   /** Populated only after BOTH messages were submitted. */
@@ -239,6 +248,8 @@ export type PublicInProgress = Omit<InProgressRound, "sealedCommunication" | "se
     communication: { A: boolean; B: boolean };
     decisions: { A: boolean; B: boolean };
   };
+  /** How long each suspect took to seal, in ms from the start of the stage. Contents stay sealed. */
+  sealedAfterMs: SealTimings;
 };
 
 export type PublicGameState = Omit<GameState, "inProgress" | "callLog" | "lock"> & {

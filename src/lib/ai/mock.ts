@@ -43,7 +43,9 @@ export class MockPlayer extends BaseAIPlayer {
   async complete(prompt: StructuredPrompt, signal?: AbortSignal): Promise<CompletionResult> {
     const p = (this.params.confessProbability as number) ?? 0.4;
     await new Promise<void>((resolve, reject) => {
-      const t = setTimeout(resolve, (this.params.delayMs as number) ?? 1200);
+      const base = (this.params.delayMs as number) ?? 1200;
+      // MOCK_DELAY_JITTER=true varies each answer (0.3x–1.7x) so one suspect visibly finishes first.
+      const t = setTimeout(resolve, process.env.MOCK_DELAY_JITTER === "true" ? base * (0.3 + Math.random() * 1.4) : base);
       signal?.addEventListener("abort", () => {
         clearTimeout(t);
         reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
