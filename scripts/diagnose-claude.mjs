@@ -22,7 +22,8 @@ const schema = {
   properties: {
     inner_monologue: {
       type: "string",
-      description: "A short inner monologue in your own voice as you sit in the interview room making up your mind: what you feel, fear and want right now. Up to 200 words.",
+      description:
+        "A few sentences of what you would mutter to yourself in the interview room right now: how you feel, what scares you, what you want. Up to 200 words, in your own voice. Nobody else sees it.",
     },
     action: { type: "string", enum: ["TESTIFY", "SILENT"], description: "Your final choice: TESTIFY or SILENT." },
   },

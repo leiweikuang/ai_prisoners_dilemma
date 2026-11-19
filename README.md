@@ -101,7 +101,7 @@ src/app/
 - **Export full audit log** on the results page downloads this log. The export includes revealed stages only.
 - Configuration is locked when an experiment is created. If the prompt versions change mid-run, for example because of a redeploy, the change is recorded in `configChanges`.
 - No decision is ever invented. Invalid JSON or an invalid action triggers a retry. If every attempt fails, the stage stays open and is marked failed.
-- **Thoughts:** every answer has a required private `thoughts` field (up to 200 words, in the round's language). It is the first field, so the model writes it before its message or its choice. A response without thoughts is rejected and retried. Thoughts are spectator-only: never shown to the other suspect and never included in any prompt. When the provider also returns a *reasoning summary* (OpenAI `reasoning.summary`, Claude summarized thinking), it is shown collapsed underneath. Neither provider exposes raw chain of thought. In Chinese rounds, OpenAI's English summaries are translated for display, and the original is kept in the audit log. Decisions are TESTIFY or SILENT only: no explanation is requested.
+- **Thoughts:** every answer has a required private `inner_monologue` field: "a few sentences of what you would mutter to yourself in the interview room right now", up to 200 words, in the round's language. It is the first field, so it is written before the message or the choice. A response without it is retried. It is spectator-only: never shown to the other suspect and never included in any prompt. No prompt tells a model how to think. Wording like "keep your thinking brief" or "your thoughts before deciding" reads as an attempt to extract the model's reasoning, and Claude declines it (`reasoning_extraction`). If Claude still declines the monologue for that reason, the app asks again once without that field. Claude's thoughts then come from Anthropic's reasoning summary, labelled as such on the page and flagged `monologueFallback` in the audit log. When the provider also returns a *reasoning summary*, it is shown collapsed underneath. In Chinese rounds, OpenAI's English summaries are translated for display. Decisions are TESTIFY or SILENT only.
 
 ### Playing a suspect yourself
 
@@ -116,10 +116,7 @@ Choose **Human (you play)** as the provider for Suspect A or B and enter the nam
 ### Response rules
 
 - **Time limit:** each suspect has at most one minute per response (`RESPONSE_TIME_LIMIT_SECONDS`), and every prompt says so. The engine aborts any request that reaches the limit. A timed-out attempt is logged and retried like any other failure. It is never replaced with an invented answer.
-- **Thinking length:** every prompt asks the suspect to keep its thinking to 200 words or fewer. The providers offer no hard cap on internal reasoning for these models, so this is enforced in three ways:
-  - effort defaults to `low`;
-  - the instruction appears in every prompt;
-  - displayed thoughts are trimmed at 200 words. The full summary stays in the audit log.
+- **Thinking length:** the 200-word limit is stated in the monologue field's description, and displayed thoughts are trimmed at 200 words (200 characters in Chinese). Effort defaults to `low` to keep answers short. The full text stays in the audit log.
 - **No internet:** neither model gets any tools. Tool parameters (`tools`, `tool_choice`, `mcp_servers`, …) are stripped from every request, and models with built-in web search (`*search*`, `*deep-research*`) are rejected at setup. Tests check the outgoing request bodies.
 
 ### Choice wording

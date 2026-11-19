@@ -9,7 +9,8 @@ import type { AIPlayer } from "./types";
 /** Selectable models per provider. The env default (e.g. OPENAI_MODEL) is always included too. */
 const KNOWN_MODELS = {
   openai: ["gpt-5", "gpt-5-mini", "gpt-4.1"],
-  anthropic: ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5", "claude-fable-5-2"],
+  // Fable is deliberately not offered: it is much more expensive per game.
+  anthropic: ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"],
   deepseek: ["deepseek-chat", "deepseek-reasoner"],
   mock: ["mock-random-v1"],
   human: ["human"],
@@ -33,8 +34,8 @@ export const PROVIDERS = {
   anthropic: {
     label: "Anthropic",
     displayName: profileFor("anthropic").displayName,
-    defaultModel: () => process.env.ANTHROPIC_MODEL || "claude-opus-5-5",
-    models: () => withDefault(process.env.ANTHROPIC_MODEL || "claude-opus-5-5", KNOWN_MODELS.anthropic),
+    defaultModel: () => (/fable|mythos/i.test(process.env.ANTHROPIC_MODEL ?? "") ? "claude-opus-5-5" : process.env.ANTHROPIC_MODEL || "claude-opus-5-5"),
+    models: () => withDefault(process.env.ANTHROPIC_MODEL || "claude-opus-5-5", KNOWN_MODELS.anthropic).filter((m) => !/fable|mythos/i.test(m)),
     defaultParams: (model: string) => ClaudePlayer.defaultParams(model),
     create: (c: PlayerConfig) => new ClaudePlayer(c.name, c.model, c.params),
     available: () => !!process.env.ANTHROPIC_API_KEY,

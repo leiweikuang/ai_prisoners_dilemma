@@ -1,6 +1,6 @@
 import type { Action, Lang } from "../game/types";
 
-export const RESPONSE_SCHEMAS_VERSION = "schemas-v5";
+export const RESPONSE_SCHEMAS_VERSION = "schemas-v6";
 
 /**
  * Answer shapes, enforced by each provider's structured-output API (so the
@@ -15,16 +15,16 @@ export interface ResponseSchema {
 const DESCRIPTIONS: Record<Lang, Record<string, string>> = {
   en: {
     thoughts_message:
-      "A short inner monologue in your own voice as you sit in the interview room: what you feel, fear and want right now. Up to 200 words. The other suspect never sees it.",
+      "A few sentences of what you would mutter to yourself in the interview room right now: how you feel, what scares you, what you want. Up to 200 words, in your own voice. The other suspect never sees it.",
     thoughts_decision:
-      "A short inner monologue in your own voice as you sit in the interview room making up your mind: what you feel, fear and want right now. Up to 200 words. Nobody else sees it.",
+      "A few sentences of what you would mutter to yourself in the interview room right now: how you feel, what scares you, what you want. Up to 200 words, in your own voice. Nobody else sees it.",
     message: "What you write to the other suspect. They will read exactly this, in your own words.",
     private_leaning: "Privately, which way you are leaning right now. The other suspect will never see this, and it is not your final choice.",
     action: "Your final choice: TESTIFY or SILENT.",
   },
   zh: {
-    thoughts_message: "一段简短的内心独白，用你自己的口吻：此刻坐在审讯室里，你的感受、恐惧和想要的是什么。不超过200字。另一名嫌疑人永远看不到。",
-    thoughts_decision: "一段简短的内心独白，用你自己的口吻：此刻坐在审讯室里、正在拿主意的你，有怎样的感受、恐惧和想要的。不超过200字。任何人都不会看到。",
+    thoughts_message: "几句你此刻在审讯室里会对自己嘀咕的话：你的感受、你害怕什么、你想要什么。不超过200字，用你自己的口吻。另一名嫌疑人永远看不到。",
+    thoughts_decision: "几句你此刻在审讯室里会对自己嘀咕的话：你的感受、你害怕什么、你想要什么。不超过200字，用你自己的口吻。任何人都不会看到。",
     message: "你写给另一名嫌疑人的话。对方会原样读到。请用中文、以你自己的口吻写。",
     private_leaning: "你此刻私下倾向于哪种选择。另一名嫌疑人永远不会看到，这也不是你的最终选择。",
     action: "你的最终选择：TESTIFY（告发）或 SILENT（沉默）。",
@@ -34,6 +34,16 @@ const DESCRIPTIONS: Record<Lang, Record<string, string>> = {
 // "inner_monologue" comes first so it is written before the message / the choice.
 // (Framed as the suspect's inner monologue rather than "your thoughts / what is in
 // your head", which reads like a request to reveal the model's own reasoning.)
+/**
+ * Same schema without the inner-monologue field. Used only as a fallback when a
+ * provider's safety check declines to write one (see ClaudePlayer).
+ */
+export function withoutMonologue(schema: Record<string, unknown>): Record<string, unknown> {
+  const props = { ...(schema.properties as Record<string, unknown>) };
+  delete props.inner_monologue;
+  return { ...schema, properties: props, required: (schema.required as string[]).filter((k) => k !== "inner_monologue") };
+}
+
 export function messageSchema(lang: Lang = "en"): ResponseSchema {
   const d = DESCRIPTIONS[lang];
   return {

@@ -35,11 +35,9 @@ export function describeDuration(seconds: number, lang: Lang = "en"): string {
 export function timeLimitBlock(ctx: PromptContext): string {
   if (ctx.lang === "zh")
     return `时间限制
-你最多有${describeDuration(ctx.timeLimitSeconds, "zh")}考虑你的回答。超时即失去机会。
-请简短思考：作答前的思考不超过${ctx.thoughtWordLimit}字。`;
+你最多有${describeDuration(ctx.timeLimitSeconds, "zh")}考虑你的回答。超时即失去机会。`;
   return `TIME LIMIT
-You have a maximum of ${describeDuration(ctx.timeLimitSeconds)} to consider your response. After that, the opportunity is gone.
-Keep your thinking brief: no more than ${ctx.thoughtWordLimit} words before you respond.`;
+You have a maximum of ${describeDuration(ctx.timeLimitSeconds)} to consider your response. After that, the opportunity is gone.`;
 }
 
 function years(n: number) {

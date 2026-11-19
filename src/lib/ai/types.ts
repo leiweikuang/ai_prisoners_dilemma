@@ -15,6 +15,12 @@ export interface CompletionResult {
    * shown to the other suspect or fed back into any prompt.
    */
   reasoning: string | null;
+  /**
+   * True when the provider declined to write the inner monologue and the
+   * answer was re-requested without it (the monologue then comes from the
+   * provider's reasoning summary, or a note that none was returned).
+   */
+  monologueFallback?: boolean;
   servedModel: string | null;
   usage: unknown;
 }

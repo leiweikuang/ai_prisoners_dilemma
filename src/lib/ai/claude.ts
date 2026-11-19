@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { Lang } from "../game/types";
+import { withoutMonologue } from "../prompts/schemas";
 import { BaseAIPlayer, ProviderError, TRANSLATION_INSTRUCTIONS, withoutTools, type CompletionResult, type StructuredPrompt } from "./types";
 
 export class ClaudePlayer extends BaseAIPlayer {
@@ -52,27 +53,40 @@ export class ClaudePlayer extends BaseAIPlayer {
   async complete(prompt: StructuredPrompt, signal?: AbortSignal): Promise<CompletionResult> {
     // No tools: no web search, web fetch or code execution.
     const { output_config, ...rest } = withoutTools(this.params) as { output_config?: Record<string, unknown> } & Record<string, unknown>;
-    const body = {
-      model: this.model,
-      system: prompt.system,
-      messages: [{ role: "user" as const, content: prompt.user }],
-      ...(rest as { max_tokens: number }),
-      output_config: {
-        ...(output_config ?? {}),
-        format: { type: "json_schema" as const, schema: prompt.schema.schema },
-      },
+    const send = async (schema: Record<string, unknown>) => {
+      const body = {
+        model: this.model,
+        system: prompt.system,
+        messages: [{ role: "user" as const, content: prompt.user }],
+        ...(rest as { max_tokens: number }),
+        output_config: {
+          ...(output_config ?? {}),
+          format: { type: "json_schema" as const, schema },
+        },
+      };
+      // Opt-in (ANTHROPIC_REFUSAL_FALLBACK=true): if the model declines, Anthropic
+      // re-runs the same request on a fallback Claude model. The model that
+      // actually answered is recorded as servedModel in the audit log.
+      return (
+        process.env.ANTHROPIC_REFUSAL_FALLBACK === "true"
+          ? await this.client.beta.messages.create(
+              { ...body, betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" } as Anthropic.Beta.MessageCreateParamsNonStreaming,
+              { signal },
+            )
+          : await this.client.messages.create(body as Anthropic.MessageCreateParamsNonStreaming, { signal })
+      ) as Anthropic.Message;
     };
-    // Opt-in (ANTHROPIC_REFUSAL_FALLBACK=true): if the model declines, Anthropic
-    // re-runs the same request on a fallback Claude model. The model that
-    // actually answered is recorded as servedModel in the audit log.
-    const res = (
-      process.env.ANTHROPIC_REFUSAL_FALLBACK === "true"
-        ? await this.client.beta.messages.create(
-            { ...body, betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" } as Anthropic.Beta.MessageCreateParamsNonStreaming,
-            { signal },
-          )
-        : await this.client.messages.create(body as Anthropic.MessageCreateParamsNonStreaming, { signal })
-    ) as Anthropic.Message;
+
+    let res = await send(prompt.schema.schema);
+    // If Claude's safety check reads the inner-monologue request as an attempt
+    // to extract its reasoning, ask once more without that field, so Claude
+    // still answers. Its monologue then comes from Anthropic's reasoning summary.
+    let monologueFallback = false;
+    const props = (prompt.schema.schema.properties ?? {}) as Record<string, unknown>;
+    if (res.stop_reason === "refusal" && res.stop_details?.category === "reasoning_extraction" && "inner_monologue" in props) {
+      res = await send(withoutMonologue(prompt.schema.schema));
+      monologueFallback = true;
+    }
     if (res.stop_reason === "refusal") {
       // Say which safety check declined, so it shows in the error banner and audit log.
       const d = res.stop_details;
@@ -92,6 +106,19 @@ export class ClaudePlayer extends BaseAIPlayer {
       .map((b) => b.text)
       .join("");
     if (!text) throw new ProviderError(`Empty response (stop_reason: ${res.stop_reason})`, true);
+    if (monologueFallback) {
+      let obj: Record<string, unknown>;
+      try {
+        obj = JSON.parse(text);
+      } catch {
+        throw new ProviderError("Fallback response was not valid JSON", true);
+      }
+      const zh = /[\u4e00-\u9fff]/.test(prompt.user);
+      obj.inner_monologue =
+        thinking ||
+        (zh ? "（Claude 的安全检查拒绝写内心独白，也没有返回推理摘要。）" : "(Claude's safety check declined to write an inner monologue, and no reasoning summary was returned.)");
+      return { rawText: JSON.stringify(obj), reasoning: null, monologueFallback, servedModel: res.model ?? null, usage: res.usage ?? null };
+    }
     return { rawText: text, reasoning: thinking || null, servedModel: res.model ?? null, usage: res.usage ?? null };
   }
 }

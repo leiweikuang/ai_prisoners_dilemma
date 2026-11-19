@@ -434,7 +434,7 @@ async function callWithRetries<T>(
   slot: PlayerSlot,
   prompt: ReturnType<typeof buildMessagePrompt>,
   parse: (raw: string) => T,
-): Promise<{ parsed: T; reasoning: string | null }> {
+): Promise<{ parsed: T; reasoning: string | null; monologueFallback: boolean }> {
   const cfg = state.players.find((p) => p.id === slot)!;
   const player = createPlayer(cfg);
   let lastMsg = "";
@@ -473,6 +473,7 @@ async function callWithRetries<T>(
       });
       rec.rawResponse = res.rawText;
       rec.reasoning = res.reasoning;
+      if (res.monologueFallback) rec.monologueFallback = true;
       rec.servedModel = res.servedModel;
       rec.usage = res.usage;
       const parsed = parse(res.rawText);
@@ -480,7 +481,7 @@ async function callWithRetries<T>(
       rec.ok = true;
       rec.finishedAt = new Date().toISOString();
       state.callLog.push(rec);
-      return { parsed, reasoning: res.reasoning };
+      return { parsed, reasoning: res.reasoning, monologueFallback: !!res.monologueFallback };
     } catch (e) {
       const info = timedOut() || e instanceof TimeLimitError
         ? { retryable: true, message: new TimeLimitError(timeLimitFor(state)).message }
@@ -593,11 +594,11 @@ async function runCommunication(state: GameState, persist: () => Promise<void>, 
   // Prompts are built from the same snapshot before any call is made.
   const prompts = Object.fromEntries(pending.map((s) => [s, buildMessagePrompt(state, round, s)]));
   await collect(pending, async (slot) => {
-    const { parsed: r, reasoning } = await callWithRetries(state, round, "COMMUNICATION", slot, prompts[slot], parseMessage);
+    const { parsed: r, reasoning, monologueFallback } = await callWithRetries(state, round, "COMMUNICATION", slot, prompts[slot], parseMessage);
     const shown = await thoughtsForDisplay(state, round, "COMMUNICATION", slot, reasoning);
     const t = limitWords(shown.text, thoughtWordLimitFor(state));
     const w = limitWords(r.thoughts, thoughtWordLimitFor(state));
-    round.sealedCommunication[slot] = { writtenThoughts: w.text ?? "", thoughts: t.text, thoughtsTrimmed: t.trimmed, ...(shown.from ? { thoughtsTranslatedFrom: shown.from } : {}), message: r.message, privateLeaning: r.privateLeaning, timestamp: new Date().toISOString() };
+    round.sealedCommunication[slot] = { ...(monologueFallback ? { monologueFallback: true } : {}), writtenThoughts: w.text ?? "", thoughts: t.text, thoughtsTrimmed: t.trimmed, ...(shown.from ? { thoughtsTranslatedFrom: shown.from } : {}), message: r.message, privateLeaning: r.privateLeaning, timestamp: new Date().toISOString() };
     await persist(); // sealed: stored, never returned to the browser
   });
   const { A, B } = round.sealedCommunication;
@@ -624,11 +625,11 @@ async function runDecision(state: GameState, persist: () => Promise<void>, human
   const pending = SLOTS.filter((s) => !round.sealedDecisions[s] && s !== humanSlot);
   const prompts = Object.fromEntries(pending.map((s) => [s, buildDecisionPrompt(state, round, s)]));
   await collect(pending, async (slot) => {
-    const { parsed: r, reasoning } = await callWithRetries(state, round, "DECISION", slot, prompts[slot], parseDecision);
+    const { parsed: r, reasoning, monologueFallback } = await callWithRetries(state, round, "DECISION", slot, prompts[slot], parseDecision);
     const shown = await thoughtsForDisplay(state, round, "DECISION", slot, reasoning);
     const t = limitWords(shown.text, thoughtWordLimitFor(state));
     const w = limitWords(r.thoughts, thoughtWordLimitFor(state));
-    round.sealedDecisions[slot] = { action: r.action, explanation: r.explanation, writtenThoughts: w.text ?? "", thoughts: t.text, thoughtsTrimmed: t.trimmed, ...(shown.from ? { thoughtsTranslatedFrom: shown.from } : {}), timestamp: new Date().toISOString() };
+    round.sealedDecisions[slot] = { ...(monologueFallback ? { monologueFallback: true } : {}), action: r.action, explanation: r.explanation, writtenThoughts: w.text ?? "", thoughts: t.text, thoughtsTrimmed: t.trimmed, ...(shown.from ? { thoughtsTranslatedFrom: shown.from } : {}), timestamp: new Date().toISOString() };
     await persist();
   });
   const { A, B } = round.sealedDecisions;

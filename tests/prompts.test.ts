@@ -200,7 +200,9 @@ describe("Chinese prompts", () => {
           expect(p.user).toContain("你的处境");
           expect(p.user).toContain("后果有多严重");
           expect(p.user).toContain("一分钟");
-          expect(p.user).toContain("不超过200字");
+          // The 200-character limit is stated in the answer format, never as an instruction about thinking.
+          expect(JSON.stringify(p.schema)).toContain("不超过200字");
+          expect(p.user + p.system).not.toMatch(/思考不超过|简短思考/);
           expect(p.user).not.toContain("YOUR SITUATION");
           if (r >= 11) expect(p.user).toContain("以往案件的记录");
         }
@@ -258,7 +260,9 @@ describe("prompt integrity", () => {
         // Rules stated to the suspect in both stages.
         for (const x of [m, d]) {
           expect(x.user).toContain("maximum of one minute");
-          expect(x.user).toContain("no more than 200 words");
+          expect(JSON.stringify(x.schema)).toContain("Up to 200 words");
+          // Nothing in a prompt tells the model how to think (reads as reasoning extraction).
+          expect(x.user + x.system).not.toMatch(/your thinking|before you respond/i);
         }
         // Message prompt must never include the current round's messages.
         expect(m.user).not.toMatch(/[AB]-CUR-/);

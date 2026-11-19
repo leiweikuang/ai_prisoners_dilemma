@@ -121,7 +121,7 @@ export function ThoughtBlock({
   color,
   animate = false,
 }: {
-  entry: { writtenThoughts?: string; thoughts?: string | null; thoughtsTrimmed?: boolean; thoughtsTranslatedFrom?: Lang; thoughtsHidden?: boolean };
+  entry: { writtenThoughts?: string; thoughts?: string | null; thoughtsTrimmed?: boolean; thoughtsTranslatedFrom?: Lang; thoughtsHidden?: boolean; monologueFallback?: boolean };
   label: string;
   color: string;
   animate?: boolean;
@@ -142,6 +142,7 @@ export function ThoughtBlock({
   return (
     <div className={animate ? "rise" : ""}>
       <Thoughts text={entry.writtenThoughts} label={label} color={color} />
+      {entry.monologueFallback && <p className="mt-1 pl-3 font-mono text-[10px] text-zinc-600">{t.fromSummary}</p>}
       {entry.thoughts && (
         <details className="mt-2 pl-3">
           <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-600 hover:text-dim">{t.providerSummary}</summary>

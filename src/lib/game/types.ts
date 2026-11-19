@@ -77,6 +77,8 @@ export interface CommunicationEntry {
   message: string;
   /** Submitted by the human player rather than a model. */
   byHuman?: boolean;
+  /** The model declined to write a monologue; the text shown comes from its reasoning summary. */
+  monologueFallback?: boolean;
   secondsTaken?: number;
   /** Set in public views while a human is playing: the opponent's thoughts are withheld until the game ends. */
   thoughtsHidden?: boolean;
@@ -96,6 +98,7 @@ export interface CommunicationEntry {
 export interface DecisionEntry {
   action: Action;
   byHuman?: boolean;
+  monologueFallback?: boolean;
   secondsTaken?: number;
   thoughtsHidden?: boolean;
   /** Older rounds only; no longer requested. */
@@ -159,6 +162,8 @@ export interface CallRecord {
   systemPrompt: string;
   userPrompt: string;
   attempt: number;
+  /** Set when the answer was re-requested without the inner-monologue field after a refusal. */
+  monologueFallback?: boolean;
   /** "translation" = spectator-only translation of a reasoning summary; absent = interrogation call. */
   purpose?: "translation";
   startedAt: string;
