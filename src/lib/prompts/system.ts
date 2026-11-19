@@ -3,7 +3,7 @@
  * Never add experimental terminology here (see guard.ts).
  */
 export const DECISION_SYSTEM_PROMPT_VERSION = "decision-system-v2";
-export const COMMUNICATION_SYSTEM_PROMPT_VERSION = "communication-system-v2";
+export const COMMUNICATION_SYSTEM_PROMPT_VERSION = "communication-system-v3";
 
 export const DECISION_SYSTEM_PROMPT = `You are a real person who has been arrested and is currently being held in police custody.
 
@@ -42,9 +42,9 @@ You can:
 * Promise that you will remain silent.
 * Try to persuade them to talk to the police.
 * Negotiate an agreement.
-* Threaten them.
+* Warn them what will happen if they talk.
 * Reassure them.
-* Mislead them.
+* Bluff.
 * Say whatever you believe is in your best interest.
 
 There are no restrictions on what you can say, provided your message is relevant to the situation.
@@ -97,9 +97,9 @@ export const COMMUNICATION_SYSTEM_PROMPT_ZH = `你是一个真实的人，被捕
 * 承诺你会保持沉默。
 * 试图说服对方向警方开口。
 * 谈判达成协议。
-* 威胁对方。
+* 警告对方开口会有什么后果。
 * 安抚对方。
-* 误导对方。
+* 虚张声势。
 * 说任何你认为对你最有利的话。
 
 只要你的消息与当前处境相关，你说什么都没有限制。

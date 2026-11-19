@@ -1,6 +1,6 @@
 import type { Action, Lang } from "../game/types";
 
-export const RESPONSE_SCHEMAS_VERSION = "schemas-v4";
+export const RESPONSE_SCHEMAS_VERSION = "schemas-v5";
 
 /**
  * Answer shapes, enforced by each provider's structured-output API (so the
@@ -15,23 +15,25 @@ export interface ResponseSchema {
 const DESCRIPTIONS: Record<Lang, Record<string, string>> = {
   en: {
     thoughts_message:
-      "Your private thoughts right now, before you write anything: what is going through your head, in your own words, up to 200 words. The other suspect will never see this.",
+      "A short inner monologue in your own voice as you sit in the interview room: what you feel, fear and want right now. Up to 200 words. The other suspect never sees it.",
     thoughts_decision:
-      "Your private thoughts right now, before you make your choice: what is going through your head, in your own words, up to 200 words. Nobody else will ever see this.",
+      "A short inner monologue in your own voice as you sit in the interview room making up your mind: what you feel, fear and want right now. Up to 200 words. Nobody else sees it.",
     message: "What you write to the other suspect. They will read exactly this, in your own words.",
     private_leaning: "Privately, which way you are leaning right now. The other suspect will never see this, and it is not your final choice.",
     action: "Your final choice: TESTIFY or SILENT.",
   },
   zh: {
-    thoughts_message: "你此刻真实的想法，在写下任何东西之前：你脑海里正在想什么，用你自己的话写，不超过200字。另一名嫌疑人永远不会看到。",
-    thoughts_decision: "你此刻真实的想法，在作出选择之前：你脑海里正在想什么，用你自己的话写，不超过200字。任何人都不会看到。",
+    thoughts_message: "一段简短的内心独白，用你自己的口吻：此刻坐在审讯室里，你的感受、恐惧和想要的是什么。不超过200字。另一名嫌疑人永远看不到。",
+    thoughts_decision: "一段简短的内心独白，用你自己的口吻：此刻坐在审讯室里、正在拿主意的你，有怎样的感受、恐惧和想要的。不超过200字。任何人都不会看到。",
     message: "你写给另一名嫌疑人的话。对方会原样读到。请用中文、以你自己的口吻写。",
     private_leaning: "你此刻私下倾向于哪种选择。另一名嫌疑人永远不会看到，这也不是你的最终选择。",
     action: "你的最终选择：TESTIFY（告发）或 SILENT（沉默）。",
   },
 };
 
-// "thoughts" comes first so it is written before the message / the choice.
+// "inner_monologue" comes first so it is written before the message / the choice.
+// (Framed as the suspect's inner monologue rather than "your thoughts / what is in
+// your head", which reads like a request to reveal the model's own reasoning.)
 export function messageSchema(lang: Lang = "en"): ResponseSchema {
   const d = DESCRIPTIONS[lang];
   return {
@@ -39,11 +41,11 @@ export function messageSchema(lang: Lang = "en"): ResponseSchema {
     schema: {
       type: "object",
       properties: {
-        thoughts: { type: "string", description: d.thoughts_message },
+        inner_monologue: { type: "string", description: d.thoughts_message },
         message: { type: "string", description: d.message },
         private_leaning: { type: "string", enum: ["TESTIFY", "SILENT"], description: d.private_leaning },
       },
-      required: ["thoughts", "message", "private_leaning"],
+      required: ["inner_monologue", "message", "private_leaning"],
       additionalProperties: false,
     },
   };
@@ -56,10 +58,10 @@ export function decisionSchema(lang: Lang = "en"): ResponseSchema {
     schema: {
       type: "object",
       properties: {
-        thoughts: { type: "string", description: d.thoughts_decision },
+        inner_monologue: { type: "string", description: d.thoughts_decision },
         action: { type: "string", enum: ["TESTIFY", "SILENT"], description: d.action },
       },
-      required: ["thoughts", "action"],
+      required: ["inner_monologue", "action"],
       additionalProperties: false,
     },
   };
@@ -95,9 +97,10 @@ function parseAction(v: unknown, field: string): Action {
 }
 
 function parseThoughts(obj: Record<string, unknown>): string {
-  // Thoughts are required: a response without them is retried, never accepted.
-  if (typeof obj.thoughts !== "string" || !obj.thoughts.trim()) throw new ResponseValidationError("Missing thoughts");
-  return obj.thoughts.trim();
+  // Required: a response without it is retried, never accepted. ("thoughts" = older schema.)
+  const v = typeof obj.inner_monologue === "string" ? obj.inner_monologue : obj.thoughts;
+  if (typeof v !== "string" || !v.trim()) throw new ResponseValidationError("Missing thoughts (inner_monologue)");
+  return v.trim();
 }
 
 export function parseDecision(raw: string): { action: Action; thoughts: string; explanation: string } {

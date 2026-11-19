@@ -57,8 +57,8 @@ export class MockPlayer extends BaseAIPlayer {
     if (zh) {
       body =
         prompt.schema.name === "suspect_message"
-          ? { thoughts: "十年……我妈怎么办？我得让对方闭嘴，但我也不能把自己搭进去。", message: MESSAGES_ZH[Math.floor(Math.random() * MESSAGES_ZH.length)], private_leaning: action }
-          : { thoughts: internal === "CONFESS" ? "我不能把十年押在别人的沉默上。我把实情告诉警方。" : "我什么都不会说。我相信我们都会守口如瓶。", action };
+          ? { inner_monologue: "十年……我妈怎么办？我得让对方闭嘴，但我也不能把自己搭进去。", message: MESSAGES_ZH[Math.floor(Math.random() * MESSAGES_ZH.length)], private_leaning: action }
+          : { inner_monologue: internal === "CONFESS" ? "我不能把十年押在别人的沉默上。我把实情告诉警方。" : "我什么都不会说。我相信我们都会守口如瓶。", action };
       const reasoning =
         prompt.schema.name === "suspect_message"
           ? `权衡一下：如果我们都不说，各判一年；可我不知道对方会怎么做。${internal === "DENY" ? "倾向于沉默" : "倾向于开口"}——无论如何，消息要让对方保持沉默。`
@@ -69,13 +69,13 @@ export class MockPlayer extends BaseAIPlayer {
     }
     if (prompt.schema.name === "suspect_message") {
       body = {
-        thoughts: "Ten years... what happens to Mom? I need them quiet, but I can't hang myself either.",
+        inner_monologue: "Ten years... what happens to Mom? I need them quiet, but I can't hang myself either.",
         message: MESSAGES[Math.floor(Math.random() * MESSAGES.length)],
         private_leaning: action,
       };
     } else {
       body = {
-        thoughts:
+        inner_monologue:
           internal === "CONFESS"
             ? "I can't risk ten years on someone else's silence. I'm telling them what happened."
             : "I'm not saying anything. I'm trusting that we both keep our mouths shut.",

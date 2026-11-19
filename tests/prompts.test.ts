@@ -150,6 +150,20 @@ describe("immersion", () => {
   });
 });
 
+describe("refusal-safe wording", () => {
+  it("asks for an inner monologue, not the model's thoughts, and never invites threats", () => {
+    for (const lang of ["en", "zh"] as const) {
+      const { state, ip } = stateAt(2);
+      ip.language = lang;
+      for (const p of [buildMessagePrompt(state, ip, "A"), buildDecisionPrompt(state, ip, "B")]) {
+        const all = p.system + p.user + JSON.stringify(p.schema);
+        expect(all).not.toMatch(/Threaten them|Mislead them|威胁对方|误导对方|going through your head|脑海里正在想/);
+        expect(JSON.stringify(p.schema)).toContain("inner_monologue");
+      }
+    }
+  });
+});
+
 describe("choice wording", () => {
   it("prompts use TESTIFY/SILENT (告发/沉默), never confess/deny wording", () => {
     for (const lang of ["en", "zh"] as const) {
@@ -171,6 +185,7 @@ describe("choice wording", () => {
     expect(parseDecision('{"thoughts":"t","action":"SILENT"}').action).toBe("DENY");
     expect(parseMessage('{"thoughts":"t","message":"m","private_leaning":"SILENT"}').privateLeaning).toBe("DENY");
     expect(() => parseDecision('{"action":"SILENT"}')).toThrow(/thoughts/);
+    expect(parseDecision('{"inner_monologue":"m","action":"SILENT"}').thoughts).toBe("m");
   });
 });
 

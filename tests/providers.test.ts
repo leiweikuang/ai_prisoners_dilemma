@@ -38,4 +38,30 @@ describe("no internet access", () => {
     const body = create.mock.calls[0][0];
     for (const k of ["tools", "tool_choice", "mcp_servers"]) expect(body).not.toHaveProperty(k);
   });
+
+  it("reports which safety check declined a Claude request", async () => {
+    process.env.ANTHROPIC_API_KEY = "test";
+    const p = new ClaudePlayer("Claude", "claude-opus-5-5", ClaudePlayer.defaultParams());
+    const create = vi.fn().mockResolvedValue({
+      stop_reason: "refusal",
+      stop_details: { type: "refusal", category: "reasoning_extraction", explanation: "x" },
+      content: [],
+      model: "claude-opus-5-5",
+      usage: null,
+    });
+    (p as unknown as { client: unknown }).client = { messages: { create } };
+    await expect(p.complete(prompt)).rejects.toThrow(/refusal; category: reasoning_extraction/);
+  });
+
+  it("uses the server-side refusal fallback only when enabled", async () => {
+    process.env.ANTHROPIC_API_KEY = "test";
+    process.env.ANTHROPIC_REFUSAL_FALLBACK = "true";
+    const p = new ClaudePlayer("Claude", "claude-opus-5-5", ClaudePlayer.defaultParams());
+    const create = vi.fn().mockResolvedValue({ stop_reason: "end_turn", content: [{ type: "text", text: "{}" }], model: "claude-opus-4-8", usage: null });
+    (p as unknown as { client: unknown }).client = { beta: { messages: { create } }, messages: { create: vi.fn() } };
+    const r = await p.complete(prompt);
+    expect(create.mock.calls[0][0]).toMatchObject({ fallbacks: "default", betas: ["server-side-fallback-2026-07-01"] });
+    expect(r.servedModel).toBe("claude-opus-4-8");
+    delete process.env.ANTHROPIC_REFUSAL_FALLBACK;
+  });
 });

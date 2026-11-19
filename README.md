@@ -49,6 +49,7 @@ To try the app without API keys, set `ENABLE_MOCK_PLAYERS=true` and choose "Mock
 | `OPENAI_REASONING_EFFORT` | no | `reasoning.effort` for OpenAI reasoning models (default `low`) |
 | `OPENAI_REASONING_SUMMARY` | no | `auto` (default), `concise` or `detailed` — reasoning summary shown as thoughts |
 | `ANTHROPIC_EFFORT` | no | Claude `output_config.effort` (default `low`) |
+| `ANTHROPIC_REFUSAL_FALLBACK` | no | `true` = if Claude declines a request, Anthropic re-runs it on a fallback Claude model. The answering model is recorded as `servedModel` (off by default) |
 | `RESPONSE_TIME_LIMIT_SECONDS` | no | Hard limit per response, stated to the suspects (default 60) |
 | `THOUGHT_WORD_LIMIT` | no | Thinking word limit, stated to the suspects and applied to displayed thoughts (default 200) |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | on Vercel | Postgres persistence. Run `supabase/schema.sql` first. |

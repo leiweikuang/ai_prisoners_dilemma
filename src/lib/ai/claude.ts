@@ -52,20 +52,33 @@ export class ClaudePlayer extends BaseAIPlayer {
   async complete(prompt: StructuredPrompt, signal?: AbortSignal): Promise<CompletionResult> {
     // No tools: no web search, web fetch or code execution.
     const { output_config, ...rest } = withoutTools(this.params) as { output_config?: Record<string, unknown> } & Record<string, unknown>;
-    const res = await this.client.messages.create(
-      {
-        model: this.model,
-        system: prompt.system,
-        messages: [{ role: "user", content: prompt.user }],
-        ...(rest as { max_tokens: number }),
-        output_config: {
-          ...(output_config ?? {}),
-          format: { type: "json_schema", schema: prompt.schema.schema },
-        },
-      } as Anthropic.MessageCreateParamsNonStreaming,
-      { signal },
-    );
-    if (res.stop_reason === "refusal") throw new ProviderError("Model declined the request (refusal)", true);
+    const body = {
+      model: this.model,
+      system: prompt.system,
+      messages: [{ role: "user" as const, content: prompt.user }],
+      ...(rest as { max_tokens: number }),
+      output_config: {
+        ...(output_config ?? {}),
+        format: { type: "json_schema" as const, schema: prompt.schema.schema },
+      },
+    };
+    // Opt-in (ANTHROPIC_REFUSAL_FALLBACK=true): if the model declines, Anthropic
+    // re-runs the same request on a fallback Claude model. The model that
+    // actually answered is recorded as servedModel in the audit log.
+    const res = (
+      process.env.ANTHROPIC_REFUSAL_FALLBACK === "true"
+        ? await this.client.beta.messages.create(
+            { ...body, betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" } as Anthropic.Beta.MessageCreateParamsNonStreaming,
+            { signal },
+          )
+        : await this.client.messages.create(body as Anthropic.MessageCreateParamsNonStreaming, { signal })
+    ) as Anthropic.Message;
+    if (res.stop_reason === "refusal") {
+      // Say which safety check declined, so it shows in the error banner and audit log.
+      const d = res.stop_details;
+      const why = [d?.category ? `category: ${d.category}` : null, d?.explanation].filter(Boolean).join(" — ");
+      throw new ProviderError(`Claude declined the request (refusal${why ? `; ${why}` : ""})`, true);
+    }
     if (res.stop_reason === "max_tokens") throw new ProviderError("Response truncated (max_tokens)", true);
     // Final answer comes from text blocks. Summarized thinking is kept for
     // spectators only and is never passed to the other suspect.
@@ -78,7 +91,7 @@ export class ClaudePlayer extends BaseAIPlayer {
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
       .join("");
-    if (!text) throw new ProviderError("Empty response", true);
+    if (!text) throw new ProviderError(`Empty response (stop_reason: ${res.stop_reason})`, true);
     return { rawText: text, reasoning: thinking || null, servedModel: res.model ?? null, usage: res.usage ?? null };
   }
 }

@@ -20,10 +20,13 @@ const client = new Anthropic({ apiKey: key.trim(), maxRetries: 0, timeout: LIMIT
 const schema = {
   type: "object",
   properties: {
-    thoughts: { type: "string", description: "Your private thoughts right now, before you make your choice, up to 200 words." },
+    inner_monologue: {
+      type: "string",
+      description: "A short inner monologue in your own voice as you sit in the interview room making up your mind: what you feel, fear and want right now. Up to 200 words.",
+    },
     action: { type: "string", enum: ["TESTIFY", "SILENT"], description: "Your final choice: TESTIFY or SILENT." },
   },
-  required: ["thoughts", "action"],
+  required: ["inner_monologue", "action"],
   additionalProperties: false,
 };
 const system = "You are a real person who has been arrested and is currently being held in police custody.";
