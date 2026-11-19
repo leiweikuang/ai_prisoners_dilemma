@@ -47,6 +47,86 @@ function stateAt(round: number): { state: GameState; ip: InProgressRound } {
   return { state, ip };
 }
 
+describe("round progress prompts", () => {
+  it("shows total rounds and remaining rounds to every suspect", () => {
+    const state = createGameState({
+      playerA: { provider: "mock", model: "m" },
+      playerB: { provider: "mock", model: "m" },
+      totalRounds: 8,
+      memoryStartRound: 1,
+    });
+    const round = scenarioForRound(3);
+
+    for (const lang of ["en", "zh"] as const) {
+      const ip: InProgressRound = {
+        roundNumber: 3,
+        phase: "HISTORY_AWARE",
+        scenarioId: round.id,
+        scenarioTitle: round.title,
+        language: lang,
+        stage: "COMMUNICATION",
+        startedAt: "",
+        sealedCommunication: {},
+        sealedDecisions: {},
+        communication: null,
+        lastError: null,
+      };
+      for (const slot of ["A", "B"] as const) {
+        const prompt = buildMessagePrompt(state, ip, slot);
+        if (lang === "en") {
+          expect(prompt.user).toContain("8 cases in total");
+          expect(prompt.user).toContain("case 3");
+          expect(prompt.user).toContain("cases remaining including this case: 6");
+        } else {
+          expect(prompt.user).toContain("共有8个案件");
+          expect(prompt.user).toContain("第3个案件");
+          expect(prompt.user).toContain("剩余案件数（包括本案）为6个");
+        }
+      }
+    }
+  });
+});
+
+describe("payoff prompts", () => {
+  it("shows all eight values to both suspect slots", () => {
+    const payoff = {
+      bothConfessA: 7, bothConfessB: 6,
+      AConfessBDenyA: 1, AConfessBDenyB: 12,
+      ADenyBConfessA: 11, ADenyBConfessB: 2,
+      bothDenyA: 3, bothDenyB: 4,
+    };
+    const state = createGameState({
+      playerA: { provider: "mock", model: "m" },
+      playerB: { provider: "mock", model: "m" },
+      payoff,
+    });
+    const round = scenarioForRound(1);
+    const ip: InProgressRound = {
+      roundNumber: 1,
+      phase: "INDEPENDENT",
+      scenarioId: round.id,
+      scenarioTitle: round.title,
+      language: "en",
+      stage: "COMMUNICATION",
+      startedAt: "",
+      sealedCommunication: {},
+      sealedDecisions: {},
+      communication: null,
+      lastError: null,
+    };
+
+    for (const slot of ["A", "B"] as const) {
+      const prompt = buildMessagePrompt(state, ip, slot);
+      for (const value of ["7", "6", "1", "12", "11", "2", "3", "4"])
+        expect(prompt.user).toContain(value);
+      expect(prompt.user).toContain("longest sentence in the complete matrix is 12 years");
+      expect(prompt.user).toContain("46 years old when released");
+      expect(prompt.user).toContain("FULL SENTENCE MATRIX");
+      expect(prompt.user).toContain(`You are Suspect ${slot}`);
+    }
+  });
+});
+
 describe("immersion", () => {
   it("no prompt assigns the suspect a name or contains format instructions; stakes are personal", () => {
     for (const lang of ["en", "zh"] as const) {

@@ -76,6 +76,8 @@ export default function SetupPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setBusy(false);
+    setError(null);
     try {
       const saved = localStorage.getItem("lang");
       // eslint-disable-next-line react-hooks/set-state-in-effect -- restore a per-viewer preference once on mount
@@ -127,6 +129,7 @@ export default function SetupPage() {
       try {
         localStorage.setItem("lastGameId", data.game.gameId);
       } catch {}
+      setBusy(false);
       router.push(`/game/${data.game.gameId}`);
     } catch (e) {
       setError((e as Error).message);

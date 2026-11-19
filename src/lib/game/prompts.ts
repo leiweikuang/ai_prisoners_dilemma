@@ -48,6 +48,9 @@ function ctxFor(state: GameState, round: InProgressRound, slot: PlayerSlot): Pro
   const scenario = scenarioById(round.scenarioId) ?? scenarioForRound(round.roundNumber);
   return {
     lang,
+    slot,
+    totalRounds: state.totalRounds,
+    currentRound: round.roundNumber,
     selfName: self.persona.name,
     partnerName: other.persona.name,
     scenarioText: renderScenario(scenario, self.persona.name, other.persona.name, lang),
