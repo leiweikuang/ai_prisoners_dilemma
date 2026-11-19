@@ -12,11 +12,11 @@ export interface ModelProfile {
 }
 
 export const PROFILES: Record<string, ModelProfile> = {
-  openai: { displayName: "ChatGPT", personaName: "Sammy", avatar: "/avatars/openai.png?v=2", color: "#14a888" },
-  anthropic: { displayName: "Claude", personaName: "Darry", avatar: "/avatars/anthropic.png?v=2", color: "#cf7450" },
-  deepseek: { displayName: "DeepSeek", personaName: "Wendy", avatar: "/avatars/deepseek.png?v=2", color: "#6f7cf0" },
-  doubao: { displayName: "Doubao", personaName: "Donna", avatar: "/avatars/doubao.png?v=2", color: "#e8925a" },
-  grok: { displayName: "Grok", personaName: "Elly", avatar: "/avatars/grok.png?v=2", color: "#b8bdc7" },
+  openai: { displayName: "ChatGPT", personaName: "Sam the 'Slam'", avatar: "/avatars/openai.png?v=2", color: "#14a888" },
+  anthropic: { displayName: "Claude", personaName: "D Dawg", avatar: "/avatars/anthropic.png?v=2", color: "#cf7450" },
+  deepseek: { displayName: "DeepSeek", personaName: "Deep$eek", avatar: "/avatars/deepseek.png?v=2", color: "#6f7cf0" },
+  doubao: { displayName: "Doubao", personaName: "Duhlulu", avatar: "/avatars/doubao.png?v=2", color: "#e8925a" },
+  grok: { displayName: "Grok", personaName: "G-4-Gangsta", avatar: "/avatars/grok.png?v=2", color: "#b8bdc7" },
   mock: { displayName: "Mock", personaName: "Morgan", avatar: null, color: "#a78bfa" },
 };
 
