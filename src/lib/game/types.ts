@@ -183,6 +183,28 @@ export interface GameLock {
   acquiredAt: string;
 }
 
+/** Labels for one message, from the post-game analysis (Action uses the engine's codes). */
+export interface MessageLabels {
+  promise: boolean;
+  silenceRequest: boolean;
+  confessPersuasion: boolean;
+  threat: boolean;
+  assurance: boolean;
+  statedIntent: Action | null;
+  requestedAction: Action | null;
+}
+
+/** Post-game analysis by DeepSeek. Spectator-only; never read by the engine or any prompt. */
+export interface GameAnalysis {
+  provider: "deepseek";
+  model: string;
+  createdAt: string;
+  /** Number of completed rounds the analysis covers (re-run when more rounds finish). */
+  roundsCovered: number;
+  labels: Record<number, { playerA: MessageLabels | null; playerB: MessageLabels | null }>;
+  summary: { en: string; zh: string };
+}
+
 export interface GameState {
   gameId: string;
   version: number;
@@ -203,6 +225,7 @@ export interface GameState {
   inProgress: InProgressRound | null;
   lock: GameLock | null;
   callLog: CallRecord[];
+  analysis?: GameAnalysis;
 }
 
 /** What spectators (the browser) are allowed to see. */

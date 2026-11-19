@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Lang, PublicGameState } from "@/lib/game/types";
 import { LangContext, STRINGS } from "@/lib/i18n";
 import { normalizePayoff } from "@/lib/game/payoff";
@@ -58,10 +58,36 @@ const frac = (n: number, d: number, r: number | null) => (d === 0 ? "—" : `${p
 
 export function ResultsView({ id }: { id: string }) {
   const [game, setGame] = useState<PublicGameState | null>(null);
+  /** DeepSeek post-game analysis: "running" while it reads, or an error/unavailable message. */
+  const [aiStatus, setAiStatus] = useState<{ state: "idle" | "running" | "error"; message?: string }>({ state: "idle" });
+
+  const runAnalysis = useCallback(
+    async (force = false) => {
+      setAiStatus({ state: "running" });
+      const res = await fetch(`/api/games/${id}/analysis`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ force }),
+      }).catch(() => null);
+      const data = await res?.json().catch(() => ({}));
+      if (res?.ok && data?.game) {
+        setGame(data.game);
+        setAiStatus({ state: "idle" });
+      } else setAiStatus({ state: "error", message: data?.error ?? "DeepSeek analysis failed" });
+    },
+    [id],
+  );
+
   useEffect(() => {
-    fetch(`/api/games/${id}`, { cache: "no-store" }).then((r) => r.json()).then((d) => setGame(d.game));
-  }, [id]);
-  const analysis = useMemo(() => (game ? analyseGame(game.rounds) : null), [game]);
+    (async () => {
+      const d = await fetch(`/api/games/${id}`, { cache: "no-store" }).then((r) => r.json());
+      setGame(d.game);
+      const g = d.game as PublicGameState | undefined;
+      // Run (or refresh) DeepSeek's analysis once there are finished rounds it hasn't covered.
+      if (g && g.rounds.length > 0 && g.analysis?.roundsCovered !== g.rounds.length) await runAnalysis();
+    })();
+  }, [id, runAnalysis]);
+  const analysis = useMemo(() => (game ? analyseGame(game.rounds, game.analysis?.labels) : null), [game]);
   if (!game || !analysis) return <main className="flex flex-1 items-center justify-center"><Thinking label="Compiling report" /></main>;
 
   const lang: Lang = game.language ?? "en";
@@ -75,6 +101,8 @@ export function ResultsView({ id }: { id: string }) {
   // Sentences as configured for this game (A / B), including older games' symmetric format.
   const pay = normalizePayoff(game.config.payoff);
   const done = game.status === "COMPLETED";
+  const ai = game.analysis;
+  const aiCurrent = !!ai && ai.roundsCovered === game.rounds.length;
 
   return (
     <LangContext.Provider value={lang}>
@@ -87,6 +115,34 @@ export function ResultsView({ id }: { id: string }) {
       <p className="mt-2 font-mono text-xs text-dim">
         {t.resultsMeta(game.rounds.length, game.totalRounds, game.memoryStartRound)} · {pa.name} ({pa.model}) vs {pb.name} ({pb.model})
       </p>
+
+      {/* DeepSeek's post-game write-up */}
+      <section className="mt-8 border border-edge bg-panel/70 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-display text-xl uppercase tracking-[0.15em]">{t.analysisTitle}</h2>
+          {ai && aiStatus.state !== "running" && (
+            <button onClick={() => runAnalysis(true)} className="font-mono text-[10px] uppercase tracking-[0.25em] text-dim hover:text-lamp">
+              {t.analysisRerun}
+            </button>
+          )}
+        </div>
+        {aiStatus.state === "running" ? (
+          <div className="mt-3">
+            <Thinking label={t.analysisRunning} />
+          </div>
+        ) : ai ? (
+          <>
+            <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">{ai.summary[lang]}</p>
+            <p className="mt-3 text-xs text-zinc-600">
+              {t.analysisNote(ai.model)}
+              {!aiCurrent && ` ${t.analysisStale(ai.roundsCovered)}`}
+            </p>
+          </>
+        ) : (
+          <p className="mt-3 text-sm text-dim">{aiStatus.message ? t.analysisFailed(aiStatus.message) : t.analysisNone}</p>
+        )}
+        {ai && aiStatus.state === "error" && <p className="mt-2 text-xs text-confess">{t.analysisFailed(aiStatus.message ?? "")}</p>}
+      </section>
 
       {/* Overall */}
       <section className="mt-8 grid gap-3 md:grid-cols-2">
@@ -187,7 +243,7 @@ export function ResultsView({ id }: { id: string }) {
         names={names}
         a={A}
         b={B}
-        note={t.communicationNote}
+        note={ai ? t.communicationNoteDeepseek(ai.model) : t.communicationNote}
         rows={[
           [m.avgLength, (s) => (s.communication.avgWords === null ? "—" : `${Math.round(s.communication.avgWords)} ${m.words}`)],
           [m.promises, (s) => s.communication.promises],

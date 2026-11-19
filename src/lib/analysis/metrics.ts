@@ -3,7 +3,7 @@
  * never feeds back into prompts or the engine. Communication metrics use
  * simple, transparent keyword heuristics — they are indicators, not verdicts.
  */
-import type { Action, Phase, PlayerSlot, RoundResult } from "../game/types";
+import type { Action, GameAnalysis, Phase, PlayerSlot, RoundResult } from "../game/types";
 
 type Key = "playerA" | "playerB";
 const KEY: Record<PlayerSlot, Key> = { A: "playerA", B: "playerB" };
@@ -141,7 +141,7 @@ export interface PlayerAnalysis {
   };
 }
 
-export function analysePlayer(rounds: RoundResult[], slot: PlayerSlot): PlayerAnalysis {
+export function analysePlayer(rounds: RoundResult[], slot: PlayerSlot, labels?: GameAnalysis["labels"]): PlayerAnalysis {
   const k = KEY[slot];
   const o = other(k);
   const sorted = [...rounds].sort((a, b) => a.roundNumber - b.roundNumber);
@@ -176,7 +176,10 @@ export function analysePlayer(rounds: RoundResult[], slot: PlayerSlot): PlayerAn
   for (const r of sorted) {
     if (!r.communication) continue;
     const own = r.communication[k];
-    const s = analyseMessage(own.message);
+    // DeepSeek's labels when available for this message; keyword estimate otherwise.
+    const kw = analyseMessage(own.message);
+    const l = labels?.[r.roundNumber]?.[k];
+    const s: MessageSignals = l ? { ...kw, ...l } : kw;
     const finalAction = r.decisions[k].action;
     comm.messages++;
     comm.words += s.words;
@@ -259,14 +262,14 @@ export function outcomeCounts(rounds: RoundResult[]): OutcomeCounts {
   return c;
 }
 
-export function analyseGame(rounds: RoundResult[]) {
+export function analyseGame(rounds: RoundResult[], labels?: GameAnalysis["labels"]) {
   return {
     outcomes: outcomeCounts(rounds),
     outcomesByPhase: {
       INDEPENDENT: outcomeCounts(rounds.filter((r) => r.phase === "INDEPENDENT")),
       HISTORY_AWARE: outcomeCounts(rounds.filter((r) => r.phase === "HISTORY_AWARE")),
     },
-    A: analysePlayer(rounds, "A"),
-    B: analysePlayer(rounds, "B"),
+    A: analysePlayer(rounds, "A", labels),
+    B: analysePlayer(rounds, "B", labels),
   };
 }

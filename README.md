@@ -43,7 +43,8 @@ To try the app without API keys, set `ENABLE_MOCK_PLAYERS=true` and choose "Mock
 |---|---|---|
 | `OPENAI_API_KEY` | yes | Server-side only |
 | `ANTHROPIC_API_KEY` | yes | Server-side only |
-| `DEEPSEEK_API_KEY` | for DeepSeek | Server-side only (`DEEPSEEK_MODEL`, `DEEPSEEK_BASE_URL` optional) |
+| `DEEPSEEK_API_KEY` | for DeepSeek and the results analysis | Server-side only (`DEEPSEEK_MODEL`, `DEEPSEEK_BASE_URL` optional) |
+| `DEEPSEEK_ANALYSIS_MODEL` | no | Model for the post-game analysis (default `deepseek-chat`) |
 | `OPENAI_MODEL` | no | Default OpenAI model (default `gpt-5`). You can override it per experiment. |
 | `ANTHROPIC_MODEL` | no | Default Claude model (default `claude-opus-5-5`). You can override it per experiment. |
 | `OPENAI_REASONING_EFFORT` | no | `reasoning.effort` for OpenAI reasoning models (default `low`) |
@@ -124,6 +125,15 @@ Choose **Human (you play)** as the provider for Suspect A or B and enter the nam
 ### Choice wording
 
 The AIs choose **TESTIFY** (告发: inform on the other suspect) or **SILENT** (沉默). These are the words in every prompt and in the JSON answer. Internally, and in stored games and exports, they are recorded as `CONFESS` and `DENY` respectively, so older games stay readable.
+
+### Post-game analysis by DeepSeek
+
+When the results page opens, DeepSeek (`deepseek-chat`, or `DEEPSEEK_ANALYSIS_MODEL`) reads every finished round once (`src/lib/analysis/deepseek.ts`):
+
+- **Labels:** it labels each message: promise, request to stay silent, pressure to testify, threat, assurance of staying silent, stated intention and requested action. These labels drive the communication statistics instead of keyword matching, and they work for both English and Chinese.
+- **Summary:** it writes a short, neutral summary in English and Chinese, shown at the top of the results page.
+
+The result is stored on the game (`analysis`), reused, and re-run automatically when more rounds finish. **Re-run analysis** forces a fresh run. It runs only after play and never affects the interrogations. With a human playing, it is available once the game has ended. If `DEEPSEEK_API_KEY` is not set, or the call fails, the page says so and the statistics fall back to the keyword estimates.
 
 ### Private leaning (communication impact)
 

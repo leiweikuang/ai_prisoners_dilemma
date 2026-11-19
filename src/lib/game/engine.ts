@@ -11,6 +11,7 @@ import { createPlayer, isProviderId, PROVIDERS } from "../ai/registry";
 import { backoffMs, classifyError, MAX_ATTEMPTS } from "../ai/retry";
 import { PROMPT_VERSIONS } from "../prompts";
 import { personaNames } from "../profiles";
+import { analyseWithDeepSeek, deepseekAnalysisAvailable, type AnalysisClient } from "../analysis/deepseek";
 import { findForbiddenTerms } from "../prompts/guard";
 import { parseDecision, parseMessage } from "../prompts/schemas";
 import { scenarioForRound } from "../prompts/scenarios";
@@ -674,4 +675,40 @@ export function finaliseRound(
       state.pauseRequested = false;
     }
   }
+}
+
+// ---------------------------------------------------------------- post-game analysis
+
+/**
+ * Runs (or reuses) DeepSeek's post-game analysis of the completed rounds and
+ * stores it on the game. Never touches rounds, prompts or the interrogation.
+ */
+export async function ensureAnalysis(gameId: string, opts: { force?: boolean } = {}, client?: AnalysisClient): Promise<GameState> {
+  const store = getStore();
+  const state = await store.get(gameId);
+  if (!state) throw new EngineError("Game not found", 404, "not_found");
+  if (state.rounds.length === 0) throw new EngineError("No completed rounds to analyse yet", 409, "no_rounds");
+  if (humanSlotOf(state) && state.status !== "COMPLETED")
+    throw new EngineError("With a human playing, the analysis is available once the game has ended", 409, "game_in_progress");
+  if (!opts.force && state.analysis && state.analysis.roundsCovered === state.rounds.length) return state;
+  if (!client && !deepseekAnalysisAvailable()) throw new EngineError("DEEPSEEK_API_KEY is not set", 503, "analysis_unavailable");
+
+  let analysis;
+  try {
+    analysis = await analyseWithDeepSeek(state, client);
+  } catch (e) {
+    throw new EngineError(`DeepSeek analysis failed: ${(e as Error).message}`, 502, "analysis_failed");
+  }
+  // Save without disturbing a stage that may have started meanwhile.
+  for (let i = 0; i < 5; i++) {
+    const latest = (await store.get(gameId))!;
+    if (latest.rounds.length !== analysis.roundsCovered) return latest; // more rounds finished; next request re-runs
+    latest.analysis = analysis;
+    try {
+      return await store.save(latest, latest.version);
+    } catch (e) {
+      if (!(e instanceof VersionConflictError)) throw e;
+    }
+  }
+  throw new EngineError("Could not save the analysis, try again", 409, "conflict");
 }
