@@ -22,6 +22,7 @@ export async function POST(req: Request) {
       totalRounds: body?.totalRounds === undefined ? undefined : Number(body.totalRounds),
       memoryStartRound: body?.memoryStartRound === undefined ? undefined : Number(body.memoryStartRound),
       language: body?.language === "zh" ? "zh" : "en",
+      payoff: body?.payoff,
     });
     return Response.json({ game: toPublic(state) }, { status: 201 });
   } catch (e) {

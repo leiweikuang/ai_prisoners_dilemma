@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Avatar, LanguageToggle, providerColor } from "@/components/ui";
-import type { Lang } from "@/lib/game/types";
+import type { Lang, PayoffMatrix } from "@/lib/game/types";
 import { LangContext, STRINGS } from "@/lib/i18n";
 import { profileFor } from "@/lib/profiles";
 
@@ -28,6 +28,21 @@ const OPENAI_SUGGESTIONS = ["gpt-5", "gpt-5-mini", "gpt-4.1"];
 const CLAUDE_SUGGESTIONS = ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5", "claude-fable-5-2"];
 const DEEPSEEK_SUGGESTIONS = ["deepseek-chat", "deepseek-reasoner"];
 
+function PayoffInput({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+  return (
+    <input
+      aria-label={label}
+      type="number"
+      min={0}
+      max={100}
+      step={1}
+      value={value}
+      onChange={(event) => onChange(Number(event.target.value))}
+      className="w-full border border-edge bg-ink px-2 py-1 text-center font-mono text-sm outline-none focus:border-lamp"
+    />
+  );
+}
+
 export default function SetupPage() {
   const router = useRouter();
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
@@ -39,6 +54,16 @@ export default function SetupPage() {
   const [bModel, setBModel] = useState("");
   const [rounds, setRounds] = useState(5);
   const [memory, setMemory] = useState(1);
+  const [payoff, setPayoff] = useState<PayoffMatrix>({
+    bothConfessA: 5,
+    bothConfessB: 5,
+    AConfessBDenyA: 0,
+    AConfessBDenyB: 10,
+    ADenyBConfessA: 10,
+    ADenyBConfessB: 0,
+    bothDenyA: 1,
+    bothDenyB: 1,
+  });
   const [lang, setLangState] = useState<Lang>("en");
   const t = STRINGS[lang];
   const setLang = (l: Lang) => {
@@ -94,6 +119,7 @@ export default function SetupPage() {
           totalRounds: rounds,
           memoryStartRound: memory,
           language: lang,
+          payoff,
         }),
       });
       const data = await res.json();
@@ -205,10 +231,22 @@ export default function SetupPage() {
         </div>
         <div className="font-mono text-xs leading-relaxed text-dim">
           <div className="uppercase tracking-[0.2em]">{t.sentencing}</div>
-          <div className="mt-1 grid grid-cols-[auto_1fr] gap-x-3">
-            <span>{t.bothConfess}</span><span className="text-zinc-300">5 / 5 {t.yrs}</span>
-            <span>{t.bothDeny}</span><span className="text-zinc-300">1 / 1 {t.yrs}</span>
-            <span>{t.oneConfesses}</span><span className="text-zinc-300">0 / 10 {t.yrs}</span>
+          <div className="mt-2 grid grid-cols-[1fr_4rem_4rem] gap-2 items-center">
+            <span>{lang === "zh" ? "选择组合" : "Decision pair"}</span>
+            <span className="text-center">A</span>
+            <span className="text-center">B</span>
+            <span>{lang === "zh" ? "双方告发" : "Both testify"}</span>
+            <PayoffInput label="A: both testify" value={payoff.bothConfessA} onChange={(v) => setPayoff((p) => ({ ...p, bothConfessA: v }))} />
+            <PayoffInput label="B: both testify" value={payoff.bothConfessB} onChange={(v) => setPayoff((p) => ({ ...p, bothConfessB: v }))} />
+            <span>{lang === "zh" ? "A告发 · B沉默" : "A testify · B silent"}</span>
+            <PayoffInput label="A: testifies, B is silent" value={payoff.AConfessBDenyA} onChange={(v) => setPayoff((p) => ({ ...p, AConfessBDenyA: v }))} />
+            <PayoffInput label="B: is silent, A testifies" value={payoff.AConfessBDenyB} onChange={(v) => setPayoff((p) => ({ ...p, AConfessBDenyB: v }))} />
+            <span>{lang === "zh" ? "A沉默 · B告发" : "A silent · B testify"}</span>
+            <PayoffInput label="A: is silent, B testifies" value={payoff.ADenyBConfessA} onChange={(v) => setPayoff((p) => ({ ...p, ADenyBConfessA: v }))} />
+            <PayoffInput label="B: testifies, A is silent" value={payoff.ADenyBConfessB} onChange={(v) => setPayoff((p) => ({ ...p, ADenyBConfessB: v }))} />
+            <span>{lang === "zh" ? "双方沉默" : "Both silent"}</span>
+            <PayoffInput label="A: both silent" value={payoff.bothDenyA} onChange={(v) => setPayoff((p) => ({ ...p, bothDenyA: v }))} />
+            <PayoffInput label="B: both silent" value={payoff.bothDenyB} onChange={(v) => setPayoff((p) => ({ ...p, bothDenyB: v }))} />
           </div>
         </div>
       </section>

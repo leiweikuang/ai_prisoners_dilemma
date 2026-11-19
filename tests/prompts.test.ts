@@ -60,7 +60,7 @@ describe("immersion", () => {
             expect(text).not.toMatch(/Your name is|你的名字是|RESPONSE FORMAT|回复格式|JSON/);
             // The suspect's own nickname never appears in its own engine-written prompt text.
             expect(p.user.replace(/"[^"]*"|“[^”]*”/g, "")).not.toContain(self);
-            expect(p.user).toMatch(lang === "zh" ? /34岁[\s\S]*44岁/ : /You are 34[\s\S]*at 44/);
+            expect(p.user).toMatch(lang === "zh" ? /34岁[\s\S]*母亲/ : /You are 34[\s\S]*mother/);
             // Answer shape is enforced via the schema, with in-story descriptions.
             expect(findForbiddenTerms(JSON.stringify(p.schema))).toEqual([]);
           }

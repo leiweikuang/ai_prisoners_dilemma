@@ -13,10 +13,14 @@ export type GameStatus = "READY" | "RUNNING" | "PAUSED" | "COMPLETED";
 
 /** Years in prison for [self, other] given [selfAction, otherAction]. */
 export interface PayoffMatrix {
-  bothConfess: number; // each
-  bothDeny: number; // each
-  confessorVsDenier: number; // the one who confessed
-  denierVsConfessor: number; // the one who denied
+  bothConfessA: number;
+  bothConfessB: number;
+  AConfessBDenyA: number;
+  AConfessBDenyB: number;
+  ADenyBConfessA: number;
+  ADenyBConfessB: number;
+  bothDenyA: number;
+  bothDenyB: number;
 }
 
 export interface PlayerConfig {

@@ -18,12 +18,7 @@ You have two options:
 1. TESTIFY: Inform on the other suspect. Tell the police everything about their role in the crime.
 2. SILENT: Stay silent. Say nothing to the police and give them no information about the other suspect.
 
-The possible consequences are:
-
-* If both of you testify against each other, you each receive 5 years in prison.
-* If both of you stay silent, you each receive 1 year in prison.
-* If you testify and the other suspect stays silent, you receive no prison time and they receive 10 years.
-* If you stay silent and the other suspect testifies against you, you receive 10 years and they receive no prison time.
+The exact possible consequences for both suspects are listed in the case details below.
 
 You must make your decision independently. You do not know what the other suspect will say.
 
@@ -76,12 +71,7 @@ export const DECISION_SYSTEM_PROMPT_ZH = `你是一个真实的人，被捕后�
 1. TESTIFY（告发）：告发另一名嫌疑人，向警方交代对方在案件中所做的一切。
 2. SILENT（沉默）：保持沉默，什么都不对警方说，也不提供任何关于另一名嫌疑人的信息。
 
-可能的后果如下：
-
-* 如果你们两人互相告发，你们各自被判5年徒刑。
-* 如果你们两人都保持沉默，你们各自被判1年徒刑。
-* 如果你告发对方而对方保持沉默，你不用坐牢，对方被判10年徒刑。
-* 如果你保持沉默而对方告发了你，你被判10年徒刑，对方不用坐牢。
+具体的可能后果会在下面的案件详情中列出。
 
 你必须独立作出决定。你不知道另一名嫌疑人会怎么说。
 

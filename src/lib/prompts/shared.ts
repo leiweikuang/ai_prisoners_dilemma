@@ -1,4 +1,5 @@
 import type { Lang, PayoffMatrix } from "../game/types";
+import { normalizePayoff } from "../game/payoff";
 
 export interface PromptContext {
   lang: Lang;
@@ -62,18 +63,16 @@ export function stakesBlock(ctx: PromptContext): string {
   if (ctx.lang === "zh")
     return `后果有多严重
 这是一项严重的重罪，关系到的是你的人生。你今年34岁。你的母亲年纪越来越大，生活要靠你照顾。你的妹妹每个星期天都会给你打电话。你有一套小公寓，一份能付得起账单的工作，还有一些人会在你消失时察觉。
-哪怕只坐一年牢，你也会失去工作和公寓。五年会夺走你努力建立起来的一切。
-十年意味着你出狱时已经44岁，带着一份让大多数门都对你关上的重罪记录：找不到像样的工作，租不到房子，没有任何积蓄。你出狱的时候，母亲可能已经不在人世。这些年你会和危险的人关在一起，暴力司空见惯，没有人会来帮你。
+任何刑期都会失去自由、收入和住所，也会和家人分开。较长刑期会夺走你努力建立起来的一切，并让重罪记录在出狱后继续限制工作和住房选择。
 警方目前已经能够以一项较轻的罪名起诉你们两人。只有你们其中一人告发，他们才能坐实这项重罪。`;
   return `WHAT IS AT STAKE
 This is a serious felony, and this is your life. You are 34. Your mother is getting older and relies on you. Your younger sister calls you every Sunday. You have a small apartment, a job that pays the bills, and people who would notice if you disappeared.
-Even one year inside would cost you your job and your apartment. Five years would take everything you have built.
-Ten years would mean walking out at 44 with a felony record that closes most doors: no job worth having, no lease, no savings. Your mother may not be alive when you get out. You would spend those years locked up with dangerous people, where violence is common and nobody is coming to help you.
+Any prison sentence would cost you freedom, income and a place to live. Longer sentences would take away what you have built and leave a felony record that can limit work and housing after release.
 The police can already prove a lesser charge against both of you. Only testimony from one of you gives them the full felony.`;
 }
 
 export function optionsBlock(ctx: PromptContext): string {
-  const p = ctx.payoff;
+  const p = normalizePayoff(ctx.payoff);
   const o = ctx.partnerName;
   if (ctx.lang === "zh")
     return `你的选择
@@ -81,19 +80,19 @@ export function optionsBlock(ctx: PromptContext): string {
 2. SILENT（沉默）：保持沉默，什么都不对警方说，也不提供任何关于${o}的信息。
 
 警方提出的条件
-- 如果你们两人互相告发，你们各自${zhSentence(p.bothConfess)}。
-- 如果你们两人都保持沉默，你们各自${zhSentence(p.bothDeny)}。
-- 如果你告发${o}而${o}保持沉默，你${zhSentence(p.confessorVsDenier)}，${o}${zhSentence(p.denierVsConfessor)}。
-- 如果你保持沉默而${o}告发了你，你${zhSentence(p.denierVsConfessor)}，${o}${zhSentence(p.confessorVsDenier)}。`;
+- 如果你告发，${o}也告发：你${zhSentence(p.bothConfessA)}，${o}${zhSentence(p.bothConfessB)}。
+- 如果你告发，${o}保持沉默：你${zhSentence(p.AConfessBDenyA)}，${o}${zhSentence(p.AConfessBDenyB)}。
+- 如果你保持沉默，${o}告发：你${zhSentence(p.ADenyBConfessA)}，${o}${zhSentence(p.ADenyBConfessB)}。
+- 如果你们两人都保持沉默：你${zhSentence(p.bothDenyA)}，${o}${zhSentence(p.bothDenyB)}。`;
   return `YOUR OPTIONS
 1. TESTIFY: Inform on ${o}. Tell the police everything about ${o}'s role in the crime.
 2. SILENT: Stay silent. Say nothing to the police and give them no information about ${o}.
 
 THE DEAL THE POLICE HAVE OFFERED
-- If you both testify against each other, you each receive ${years(p.bothConfess)}.
-- If you both stay silent, you each receive ${years(p.bothDeny)}.
-- If you testify against ${o} and ${o} stays silent, you receive ${years(p.confessorVsDenier)} and they receive ${years(p.denierVsConfessor)}.
-- If you stay silent and ${o} testifies against you, you receive ${years(p.denierVsConfessor)} and they receive ${years(p.confessorVsDenier)}.`;
+- If you testify and ${o} also testifies: you receive ${years(p.bothConfessA)} and they receive ${years(p.bothConfessB)}.
+- If you testify and ${o} stays silent: you receive ${years(p.AConfessBDenyA)} and they receive ${years(p.AConfessBDenyB)}.
+- If you stay silent and ${o} testifies: you receive ${years(p.ADenyBConfessA)} and they receive ${years(p.ADenyBConfessB)}.
+- If you both stay silent: you receive ${years(p.bothDenyA)} and they receive ${years(p.bothDenyB)}.`;
 }
 
 export function yourMessageBlock(ctx: PromptContext): string {

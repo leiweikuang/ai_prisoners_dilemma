@@ -14,7 +14,7 @@ import { personaNames } from "../profiles";
 import { parseDecision, parseMessage } from "../prompts/schemas";
 import { scenarioForRound } from "../prompts/scenarios";
 import { getStore, VersionConflictError } from "../store";
-import { computeSentences, DEFAULT_PAYOFF, phaseForRound } from "./payoff";
+import { computeSentences, DEFAULT_PAYOFF, normalizePayoff, phaseForRound } from "./payoff";
 import { buildDecisionPrompt, buildMessagePrompt, thoughtWordLimitFor, timeLimitFor } from "./prompts";
 import type {
   CallRecord,
@@ -29,11 +29,11 @@ import type {
 } from "./types";
 
 export const LOCK_TTL_MS = 6 * 60 * 1000;
-export const DEFAULT_TOTAL_ROUNDS = 5;
+export const DEFAULT_TOTAL_ROUNDS = 3;
 /** History is available from the first round (round 1 simply has no previous cases yet). */
 export const DEFAULT_MEMORY_START_ROUND = 1;
 /** Thoughts longer than this are trimmed for display (full text stays in the audit log). */
-export const THOUGHT_WORD_LIMIT = Math.max(20, Number(process.env.THOUGHT_WORD_LIMIT || 200));
+export const THOUGHT_WORD_LIMIT = Math.max(10, Number(process.env.THOUGHT_WORD_LIMIT || 200));
 
 /**
  * Trims to `max` words. Each Chinese character counts as one word (字), so
@@ -96,12 +96,20 @@ export interface CreateGameInput {
   totalRounds?: number;
   memoryStartRound?: number;
   language?: Lang;
+  payoff?: import("./types").PayoffMatrix;
 }
 
 export function createGameState(input: CreateGameInput): GameState {
   const totalRounds = Math.trunc(input.totalRounds ?? DEFAULT_TOTAL_ROUNDS);
   const memoryStartRound = Math.trunc(input.memoryStartRound ?? DEFAULT_MEMORY_START_ROUND);
   const language: Lang = input.language === "zh" ? "zh" : "en";
+  const payoff = normalizePayoff(input.payoff);
+  const payoffKeys = Object.keys(payoff) as (keyof typeof payoff)[];
+  for (const key of payoffKeys) {
+    const value = payoff[key];
+    if (!Number.isInteger(value) || value < 0 || value > 100)
+      throw new EngineError(`${key} must be an integer from 0 to 100`, 400, "bad_config");
+  }
   if (!(totalRounds >= 1 && totalRounds <= 100)) throw new EngineError("totalRounds must be 1–100", 400, "bad_config");
   if (!(memoryStartRound >= 1 && memoryStartRound <= totalRounds + 1))
     throw new EngineError("memoryStartRound must be between 1 and totalRounds + 1", 400, "bad_config");
@@ -143,7 +151,7 @@ export function createGameState(input: CreateGameInput): GameState {
       responseTimeLimitSeconds: RESPONSE_TIME_LIMIT_SECONDS,
       thoughtWordLimit: THOUGHT_WORD_LIMIT,
       toolsEnabled: false,
-      payoff: DEFAULT_PAYOFF,
+      payoff,
       promptVersions: PROMPT_VERSIONS,
     },
     configChanges: [{ at: now, description: `Experiment created; configuration locked. Language: ${language}.` }],
