@@ -183,7 +183,7 @@ A cold blue-green booth with one warm light (the console) and one alarm (oxblood
 
 ## Layout
 
-The live room is a three-column stage at desktop: Room A, the partition (the round number, case title, stage signals or countdown, and phase), then Room B. Below the stage sits the full-width console, and below that the case record, earlier rounds and the round summary. The first viewport at 1440×900 shows both rooms, the partition and the top edge of the console. At mobile width the stage stacks: Room A, then the partition, then Room B. Door plates switch from a row to a column; avatars shrink from 208px to 160px; intercom lines collapse from a `7.5rem | 1fr` grid to a single column. Spacing runs in steps of 8: 8, 12, 24, 32 and 48px. Glass plates and the console use 24px of padding. The setup page mirrors the stage: two rooms with a booking partition between them (rounds, history and the sentencing table), then a console with "Begin interrogation".
+The live room is a three-column stage at desktop: Room A, the partition (the round number, case title, stage signals or countdown, and phase), then Room B. Below the stage sits the full-width console, and below that the case record, earlier rounds and the round summary. The first viewport at 1440×900 shows both rooms, the partition and the top edge of the console. At mobile width the stage stacks: Room A, then the partition, then Room B. Door plates switch from a row to a column; avatars shrink from 208px to 160px; the intercom's two side-by-side columns (A under Room A, B under Room B, split by a glazing-bar rule) stack into one. Spacing runs in steps of 8: 8, 12, 24, 32 and 48px. Glass plates and the console use 24px of padding. The setup page mirrors the stage: two rooms with a booking partition between them (rounds, history and the sentencing table), then a console with "Begin interrogation".
 
 ## Elevation & Depth
 
@@ -227,7 +227,7 @@ A smoked plate at the foot of the room. It holds the ThoughtBlock: a label with 
 A `.stamp-plate` struck over the avatar's lower edge: a stencil word, double-bordered, with `mix-blend-mode: screen`. It animates from scale 1.9 at −9° to 1 at −5°. Before the reveal, the same slot shows a VHS-style SEALED tag.
 
 ### Console
-`.console`: the housing colour with a faint amber wash from the top edge and an amber bevel. It holds the intercom transcript (speaker | line), Continue, the playback controls and the language toggle. Errors and retry also appear here.
+`.console`: the housing colour with a faint amber wash from the top edge and an amber bevel. It holds the intercom transcript, with A's and B's messages side by side, each under its own room, Continue, the playback controls and the language toggle. Errors and retry also appear here.
 
 ### Partition
 A narrow column between the rooms: the round number in display type, then "/ total", then the case title between two rules, then three signal lamps (communication, deliberation, decision), then the phase line in amber.

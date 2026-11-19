@@ -377,7 +377,7 @@ export function LiveView({ id }: { id: string }) {
   };
 
   const intercomLine = (from: PlayerState, to: PlayerState, slot: "A" | "B", m: CommunicationEntry | undefined) => (
-    <div key={slot} className={`grid grid-cols-1 items-baseline gap-1 sm:grid-cols-[7.5rem_1fr] sm:gap-4 ${view === "comm_reveal" ? "rise" : ""}`} style={{ animationDelay: slot === "B" ? "0.25s" : "0s" }}>
+    <div key={slot} className={`min-w-0 space-y-2 ${slot === "B" ? "border-t border-edge pt-4 md:border-l md:border-t-0 md:pl-8 md:pt-0" : "md:pr-8"} ${view === "comm_reveal" ? "rise" : ""}`} style={{ animationDelay: slot === "B" ? "0.25s" : "0s" }}>
       <div className="flex items-center gap-2 font-plate text-sm font-semibold uppercase tracking-[0.2em] text-dim">
         <span className="inline-block h-px w-5" style={{ background: providerColor(from.provider) }} />
         {slot} <IconForward size={12} /> {slot === "A" ? "B" : "A"}
@@ -503,7 +503,7 @@ export function LiveView({ id }: { id: string }) {
             </div>
           </div>
 
-          <div className="mt-4 space-y-3">
+          <div className={`mt-4 ${messages ? "grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-0" : ""}`}>
             {messages ? (
               <>
                 {intercomLine(pa, pb, "A", messages.playerA)}
